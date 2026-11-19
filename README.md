@@ -30,6 +30,16 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 
 **Prueba física pendiente:** revisar visualmente la corrección de insets en Xiaomi/Samsung/Honor y probar con capturas exportadas de un entorno autorizado. El modo monitor real y las sesiones en vivo siguen condicionados a hardware/controladores y a la fase de integración correspondiente.
 
+
+### Estado comprobado de CI de M3
+
+- **Pruebas nativas C++:** aprobadas, incluyendo PCAP/PCAPNG válido y truncado.
+- **Pruebas unitarias Android:** aprobadas.
+- **Build Debug R8:** aprobado; archivo `mapping.txt` verificado.
+- **Artefacto APK Debug:** `ghost-wifi-debug` (GitHub Actions [GitHub Actions #44567816041](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44567816041), commit `cda2761`).
+- **Firma persistente:** no disponible en GitHub Actions; la release con keystore original no se generó. El Debug del runner puede no actualizar versiones firmadas con otro certificado.
+- **Validación Android 16 en dispositivo:** pendiente; la corrección de insets está implementada, no aún verificada visualmente en el teléfono.
+
 ## Hito M2 — USB OTG y hardware externo (0.3.0-alpha)
 
 - Escaneo de dispositivos USB conectados y actualizaciones al conectar/desconectar, desde la pantalla **Equipos**.

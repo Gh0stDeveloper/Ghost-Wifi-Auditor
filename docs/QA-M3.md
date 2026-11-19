@@ -1,6 +1,6 @@
 # Ghost WiFi Auditor — M3 QA (v0.4.0-alpha)
 
-Source branch: `main`. The M3 test evidence must be obtained from GitHub Actions and real Android devices; do not treat a green build as hardware validation.
+Source branch: `main`, implementation commit `cda2761`. GitHub Actions [GitHub Actions #44567816041](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44567816041) succeeded (native C++, Android unit tests, R8 Debug build, mapping and APK artifact); this does NOT establish device/hardware compatibility.
 
 ## Fixes from user feedback
 

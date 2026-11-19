@@ -3,7 +3,7 @@
 **Project:** [Gh0stDeveloper/Ghost-Wifi-Auditor](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor)  
 **Owner / Developer:** Ghost Developer  
 **Working branch:** `main`  
-**Baseline:** `0.4.0-alpha` M3 PCAP analysis + UI insets correction (CI/hardware QA pending)  
+**Baseline:** `0.4.0-alpha` M3 PCAP analysis + UI insets correction (CI success, Android/hardware QA pending)  
 **Status (2026-11-19):** M1 v0.2 passed CI, and user confirmed root checks on a Redmi 14C. **M2 v0.3** CI [run #44563903907](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44563903907) passed unit tests, R8-minified Debug build, R8 mapping check and APK artifact upload (commit `5406aaa`). Persistent signing secrets were not configured; signed-release steps were skipped. Physical USB adapter QA is pending.
 
 > This document is a development plan, not a claim that planned functions already work. "Compiled" does not mean "tested on device." No unsupported driver or monitor capability is to be labeled as available.
@@ -146,6 +146,8 @@ Every release must include: **version/build, branch/commit, what changed (screen
 - [ ] Physical OTG adapter connected/disconnected, user-granted permission, power/driver check and unknown VID:PID manual tests.
 
 ## M3 integration observations (2026-11-19)
+
+- [x] GitHub Actions [GitHub Actions #44567816041](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44567816041) passed native C++ tests, Android unit tests, R8-minified Debug build, R8 mapping and artifact upload for commit `cda2761`.
 
 - [x] UI status-bar/navigation-bar fix: root `Scaffold` uses `safeDrawingPadding` and consumes insets.
 - [x] Removed **manually-added local phone** profile from Equipos; compatible model catalog remains read-only and versioned.
