@@ -4,6 +4,10 @@
 **Scope:** report/history/privacy, bilingual primary UI, theme/text scaling, offline-only mode.  
 **Hardware tests:** deferred to M6 by the project owner.
 
+## Automation result — PASS
+
+[GitHub Actions #44587539143](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44587539143) (code commit `72a5674`) completed successfully: Python agent tests, C++ PCAP/PCAPNG tests, Android unit tests, R8 Debug APK build, nonempty mapping.txt and artifact upload. Signed release **was skipped**, as repository secrets `GHOST_WIFI_*` are not configured.
+
 ## Automated checks
 
 - `HistorySearchTest`: empty query, case-insensitive metadata match, annotation sanitization.

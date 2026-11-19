@@ -3,7 +3,7 @@
 **Project:** [Gh0stDeveloper/Ghost-Wifi-Auditor](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor)  
 **Owner / Developer:** Ghost Developer  
 **Working branch:** `main`  
-**Baseline:** `0.6.0-alpha` M5 reports, offline history and personalization (CI/device QA pending)  
+**Baseline:** `0.6.0-alpha` M5 reports, history and customization (automated CI passed, physical QA pending)  
 **Status (2026-11-19):** M1 v0.2 passed CI, and user confirmed root checks on a Redmi 14C. **M2 v0.3** CI [run #44563903907](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44563903907) passed unit tests, R8-minified Debug build, R8 mapping check and APK artifact upload (commit `5406aaa`). Persistent signing secrets were not configured; signed-release steps were skipped. Physical USB adapter QA is pending.
 
 > This document is a development plan, not a claim that planned functions already work. "Compiled" does not mean "tested on device." No unsupported driver or monitor capability is to be labeled as available.
@@ -175,5 +175,5 @@ Every release must include: **version/build, branch/commit, what changed (screen
 - [x] `PdfReportExporter.kt`: local Android PDF reports with explicit export consent.
 - [x] `HistorySearch.kt` and tests: searchable metadata and sanitized labels.
 - [x] UI updates: history search/sort/edit, PDF export, status NOT_MEASURED, language/theme/text-scale controls.
-- [ ] Android Debug R8 CI result and APK artifact for v0.6.0-alpha (verify after push).
+- [x] Android Debug R8 tests, `mapping.txt`, APK artifact: [GitHub Actions #44587539143](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44587539143) (commit `72a5674`).
 - [ ] Real-device visual, PDF rendering, translation, privacy and accessibility tests; deferred to M6.

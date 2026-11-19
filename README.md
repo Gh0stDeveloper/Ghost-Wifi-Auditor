@@ -20,6 +20,8 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 
 **Estado de CI M4 (2026-11-19):** [GitHub Actions #44583206158](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44583206158) compiló `0.5.0-alpha` (commit `8218dd2`) y aprobó pruebas Python/Linux, pruebas nativas C++ y pruebas unitarias Android. `assembleDebug` con R8, `mapping.txt` y publicación del artefacto `ghost-wifi-debug` correctos. Se corrigió el empaquetado duplicado de metadatos Bouncy Castle en Android. **La release con firma persistente no se generó** porque todavía faltan `GHOST_WIFI_*` GitHub Secrets. El cliente SSH y el motor de captura remoto **no están validados en hardware real**.
 
+**Resultado confirmado de M5 (19 de noviembre de 2026):** [GitHub Actions #44587539143](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44587539143) aprobó las pruebas Python/Linux, pruebas nativas C++, pruebas unitarias Android, `assembleDebug` con R8 y comprobación del archivo `mapping.txt`. APK `ghost-wifi-debug` generada desde el commit `72a5674`. Una compilación anterior falló por un ícono no disponible (`ImageOff`); se sustituyó por un ícono compatible. **No se produjo release firmada permanentemente**, porque faltan las credenciales privadas de firma en GitHub Secrets. La exportación PDF, el nuevo historial y los temas aún requieren pruebas visuales en dispositivo físico.
+
 ## Hito M5 — Informes, historial, idiomas y personalización (0.6.0-alpha)
 
 - **Historial mejorado:** búsqueda por nombre, etiqueta, nota, tipo de captura y origen; orden por más reciente, más antigua o mayor cantidad de paquetes.
