@@ -170,7 +170,7 @@ object RemoteLinuxClient {
                 if (file.length() > 32L * 1024 * 1024) {
                     throw IOException("La descarga supera 32 MiB")
                 }
-                val imported = CaptureRepository.importCapture(context, Uri.fromFile(file))
+                val imported = CaptureRepository.importCapture(context, Uri.fromFile(file), "linux_ssh")
                 runCatching { execute(ssh, "$AGENT cleanup --id $id", 10) }
                 imported
             } finally {

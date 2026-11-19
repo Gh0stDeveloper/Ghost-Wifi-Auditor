@@ -19,8 +19,8 @@ android {
         applicationId = "com.ghostdeveloper.ghostwifiauditor"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.5.0-alpha"
+        versionCode = 6
+        versionName = "0.6.0-alpha"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
         externalNativeBuild { cmake { cppFlags += "-std=c++17" } }
     }

@@ -19,20 +19,46 @@ data class CaptureEntry(
     val displayName: String,
     val importedAt: Long,
     val bytes: Long,
-    val summary: JSONObject
+    val summary: JSONObject,
+    val label: String = "",
+    val note: String = "",
+    val source: String = "file_import",
+    val deviceProfile: String = "",
+    val adapterProfile: String = ""
 ) {
     val format: String get() = summary.optString("format", "desconocido")
     val packets: Long get() = summary.optLong("packets", 0L)
-    fun reportJson(): String = JSONObject().apply {
+    /**
+     * Default report excludes potentially identifying filenames, device descriptions
+     * and free-text notes. Raw packet payload is NEVER included in JSON.
+     */
+    fun reportJson(includeIdentifiers: Boolean = false): String = JSONObject().apply {
         put("application", "Ghost WiFi Auditor")
-        put("reportVersion", 1)
+        put("reportVersion", 2)
         put("id", id)
-        put("fileName", displayName)
         put("importedAtEpochMs", importedAt)
+        put("source", source)
         put("fileSizeBytes", bytes)
         put("analysis", summary)
-        put("notice", "Offline metadata analysis; does not validate network security or reveal credentials.")
+        put("observations", JSONObject().apply {
+            put("encryptionAdvertised", JSONObject.NULL)
+            put("wpsAdvertised", JSONObject.NULL)
+            put("channel", JSONObject.NULL)
+            put("rssiDbm", JSONObject.NULL)
+            put("status", "NOT_MEASURED")
+            put("note", "These properties are not inferred from packet counts.")
+        })
+        put("privacy", if (includeIdentifiers) "INCLUDE_IDENTIFIERS" else "REDACTED")
+        if (includeIdentifiers) {
+            put("originalFileName", displayName)
+            put("label", label)
+            put("note", note)
+            put("deviceProfile", deviceProfile)
+            put("adapterProfile", adapterProfile)
+        }
+        put("notice", "Packet metadata only. A capture does not establish a vulnerability.")
     }.toString(2)
+
 }
 
 object CaptureRepository {
@@ -64,7 +90,12 @@ object CaptureRepository {
                         displayName = obj.getString("displayName"),
                         importedAt = obj.getLong("importedAt"),
                         bytes = obj.getLong("bytes"),
-                        summary = obj.getJSONObject("summary")
+                        summary = obj.getJSONObject("summary"),
+                        label = obj.optString("label"),
+                        note = obj.optString("note"),
+                        source = obj.optString("source", "file_import"),
+                        deviceProfile = obj.optString("deviceProfile"),
+                        adapterProfile = obj.optString("adapterProfile")
                     )
                 }.getOrNull()
             }.sortedByDescending { it.importedAt }
@@ -78,7 +109,7 @@ object CaptureRepository {
     }.getOrNull().orEmpty().take(110).ifBlank { "captura_importada" }
         .replace(Regex("[\\r\\n\\t]"), "_")
 
-    suspend fun importCapture(context: Context, uri: Uri): CaptureEntry = withContext(Dispatchers.IO) {
+    suspend fun importCapture(context: Context, uri: Uri, captureSource: String = "file_import"): CaptureEntry = withContext(Dispatchers.IO) {
         val previous = list(context)
         if (previous.size >= MAX_ENTRIES) throw IOException("Límite de 20 capturas; elimina una antes de importar")
         if (previous.sumOf { it.bytes } >= MAX_TOTAL_BYTES) throw IOException("Almacenamiento de capturas lleno")
@@ -112,11 +143,22 @@ object CaptureRepository {
             if (!parsed.optBoolean("ok",false)) {
                 throw IOException("PCAP inválido: ${parsed.optString("error","desconocido")}")
             }
-            val entry = CaptureEntry(id,displayName(context,uri),System.currentTimeMillis(),total,parsed)
+            val prefs = context.getSharedPreferences("ghost_wifi_settings", Context.MODE_PRIVATE)
+            val entry = CaptureEntry(
+                id, displayName(context,uri), System.currentTimeMillis(), total, parsed,
+                source = if (captureSource == "linux_ssh") "linux_ssh" else "file_import",
+                deviceProfile = "${android.os.Build.MANUFACTURER.take(40)} ${android.os.Build.MODEL.take(60)}",
+                adapterProfile = prefs.getString("adapter", "")?.take(80).orEmpty()
+            )
             val saved = JSONObject().apply {
                 put("id",entry.id);put("displayName",entry.displayName)
                 put("importedAt",entry.importedAt);put("bytes",entry.bytes)
                 put("summary",entry.summary)
+                put("label",entry.label)
+                put("note",entry.note)
+                put("source",entry.source)
+                put("deviceProfile",entry.deviceProfile)
+                put("adapterProfile",entry.adapterProfile)
             }
             metaFile.writeText(saved.toString())
             entry
@@ -126,11 +168,30 @@ object CaptureRepository {
         }
     }
 
-    suspend fun exportReport(context: Context, entry: CaptureEntry, target: Uri) =
+    /**
+     * Atomically update only user-controlled local metadata. Captured bytes are unchanged.
+     */
+    fun updateAnnotations(context: Context, id: String, label: String, note: String): Boolean {
+        if (!legalId.matches(id) || !capture(context,id).isFile) return false
+        val file = meta(context,id)
+        val temp = File(dir(context), "$id.json.pending")
+        return runCatching {
+            val obj = JSONObject(file.readText())
+            require(obj.getString("id") == id)
+            obj.put("label", HistorySearch.sanitizeLabel(label))
+            obj.put("note", HistorySearch.sanitizeLabel(note, 400))
+            temp.writeText(obj.toString())
+            if (!temp.renameTo(file)) throw IOException("Cannot write capture annotation")
+            true
+        }.getOrDefault(false).also { temp.delete() }
+    }
+
+    suspend fun exportReport(context: Context, entry: CaptureEntry, target: Uri,
+        includeIdentifiers: Boolean = false) =
         withContext(Dispatchers.IO) {
             val output=context.contentResolver.openOutputStream(target,"w")
                 ?: throw IOException("No se pudo abrir destino JSON")
-            output.use { it.write(entry.reportJson().toByteArray(Charsets.UTF_8)) }
+            output.use { it.write(entry.reportJson(includeIdentifiers).toByteArray(Charsets.UTF_8)) }
         }
 
     suspend fun exportCapture(context: Context, entry: CaptureEntry, target: Uri) =

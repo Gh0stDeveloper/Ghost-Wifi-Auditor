@@ -3,7 +3,7 @@
 **Project:** [Gh0stDeveloper/Ghost-Wifi-Auditor](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor)  
 **Owner / Developer:** Ghost Developer  
 **Working branch:** `main`  
-**Baseline:** `0.5.0-alpha` M4 Linux SSH integration (automated CI passed; real-host QA pending)  
+**Baseline:** `0.6.0-alpha` M5 reports, offline history and personalization (CI/device QA pending)  
 **Status (2026-11-19):** M1 v0.2 passed CI, and user confirmed root checks on a Redmi 14C. **M2 v0.3** CI [run #44563903907](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44563903907) passed unit tests, R8-minified Debug build, R8 mapping check and APK artifact upload (commit `5406aaa`). Persistent signing secrets were not configured; signed-release steps were skipped. Physical USB adapter QA is pending.
 
 > This document is a development plan, not a claim that planned functions already work. "Compiled" does not mean "tested on device." No unsupported driver or monitor capability is to be labeled as available.
@@ -80,12 +80,12 @@
 
 **Goal:** Useful, understandable results rather than raw console output.
 
-- [ ] Searchable audit history, session labels, timestamps, device profile and selected adapter.
-- [ ] Report export in JSON and PDF, with sensitive identifiers redacted by default.
-- [ ] Structured observations: encryption advertised, WPS advertised (not a confirmed vulnerability), signal strength, channel and adapter capabilities.
-- [ ] Spanish and English translations initially; add other languages through Android resources when quality assured.
-- [ ] Optional offline mode, accessibility, scalable typography and light/dark theme settings (AMOLED default).
-- [ ] About: Ghost Developer, version/build, official channel, community, repository, third-party acknowledgments and licenses.
+- [x] Searchable audit history, editable labels/notes, timestamps, origin, local device description and selected adapter metadata (physical QA pending).
+- [x] User-initiated JSON/PDF export with identifying fields hidden by default; original PCAP export remains unredacted and explicitly labelled (visual PDF QA pending).
+- [x] Structured report distinguishes measured packet counts from NOT_MEASURED encryption/WPS/channel/RSSI; no fabricated security findings. Parsing actual wireless parameters remains pending a validated scanning/capture backend.
+- [x] Spanish/English selector and translation of primary screens; full technical-text localization and Android resource audit remain pending.
+- [x] Offline-only setting for SSH/remote photos, scalable typography and AMOLED/graphite/light themes. Device accessibility and visual QA still pending.
+- [x] About lists Ghost Developer, version, official channel/community, repository and third-party libraries; license verification and detailed notices before release pending.
 
 **Acceptance:** results reproduce consistently from a saved session, export cleanly and remain understandable offline.
 
@@ -167,3 +167,13 @@ Every release must include: **version/build, branch/commit, what changed (screen
 - [ ] Android device smoke test and signed release with original persistent key; GitHub Secrets not configured.
 - [ ] Physical test against a real Linux SSH server with compatible monitor interface and sudo/capabilities configured safely.
 - [ ] Test network interruptions, SFTP failures, host key changes, large transfers and Android lifecycle.
+
+## M5 source integration (2026-11-19)
+
+- [x] `AppPreferences.kt`: language, theme, font scale, offline/identifier-export policy.
+- [x] `CaptureRepository.kt`: persisted labels/notes, source/device/adapter metadata, JSON v2 report privacy defaults.
+- [x] `PdfReportExporter.kt`: local Android PDF reports with explicit export consent.
+- [x] `HistorySearch.kt` and tests: searchable metadata and sanitized labels.
+- [x] UI updates: history search/sort/edit, PDF export, status NOT_MEASURED, language/theme/text-scale controls.
+- [ ] Android Debug R8 CI result and APK artifact for v0.6.0-alpha (verify after push).
+- [ ] Real-device visual, PDF rendering, translation, privacy and accessibility tests; deferred to M6.

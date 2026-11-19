@@ -25,15 +25,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
-private val RemoteGreen = Color(0xFF54D98A)
-private val RemoteBlue = Color(0xFF66B9F1)
-private val RemoteSecondary = Color(0xFFA9ACB3)
-private val RemoteAmber = Color(0xFFFFC87D)
-private val RemoteCard = Color(0xFF232527)
+private val RemoteGreen: Color @Composable get() = LocalDesignColors.current.accent
+private val RemoteBlue: Color @Composable get() = LocalDesignColors.current.blue
+private val RemoteSecondary: Color @Composable get() = LocalDesignColors.current.secondary
+private val RemoteAmber: Color @Composable get() = LocalDesignColors.current.warning
+private val RemoteCardSurface: Color @Composable get() = LocalDesignColors.current.card
 
 @Composable
 private fun RemoteCard(content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth().background(RemoteCard, RoundedCornerShape(15.dp))
+    Column(Modifier.fillMaxWidth().background(RemoteCardSurface, RoundedCornerShape(15.dp))
         .padding(15.dp), verticalArrangement=Arrangement.spacedBy(10.dp), content=content)
 }
 @Composable private fun RemoteHint(text: String, color: Color = RemoteSecondary) {
@@ -44,6 +44,8 @@ private fun RemoteCard(content: @Composable ColumnScope.() -> Unit) {
 fun RemoteLinuxScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val preferences = LocalUiPreferences.current
+    fun localize(es:String,en:String):String=if(preferences.language=="en") en else es
     // No passwords, passphrases or private-key contents are put in SavedState/SharedPreferences.
     var host by rememberSaveable { mutableStateOf("") }
     var port by rememberSaveable { mutableStateOf("22") }
@@ -78,39 +80,42 @@ fun RemoteLinuxScreen(onBack: () -> Unit) {
         TextButton(onClick=onBack) {
             Icon(Icons.Filled.ArrowBack,null)
             Spacer(Modifier.width(6.dp))
-            Text("Volver a Auditoría")
+            Text(tr("Volver a Auditoría","Back to Audit"))
         }
-        Text("Linux remoto · SSH",fontSize=20.sp,fontWeight=FontWeight.Bold)
-        RemoteHint("Conecta un equipo Linux controlado por ti. No se ejecutan comandos libres ni se omite la verificación de host.")
+        Text(tr("Linux remoto · SSH","Remote Linux · SSH"),fontSize=20.sp,fontWeight=FontWeight.Bold)
+        RemoteHint(tr("Conecta un equipo Linux controlado por ti. No se ejecutan comandos libres ni se omite la verificación de host.",
+            "Connect a Linux computer you control. No arbitrary shell commands or bypassed host verification."))
+        if(preferences.offlineOnly) RemoteHint(tr("Modo sin conexión activo: desactívalo en Ajustes para utilizar SSH.",
+            "Offline mode is active. Disable it in Settings to use SSH."),RemoteAmber)
         RemoteCard {
-            Text("Datos de conexión",fontWeight=FontWeight.Bold)
+            Text(tr("Datos de conexión","Connection details"),fontWeight=FontWeight.Bold)
             OutlinedTextField(value=host,onValueChange={host=it.take(253);status=null},
-                label={Text("IP o nombre DNS del Linux")}, singleLine=true,modifier=Modifier.fillMaxWidth())
+                label={Text(tr("IP o nombre DNS del Linux","Linux hostname or IP"))}, singleLine=true,modifier=Modifier.fillMaxWidth())
             OutlinedTextField(value=port,onValueChange={port=it.filter(Char::isDigit).take(5);status=null},
-                label={Text("Puerto SSH")}, singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),
+                label={Text(tr("Puerto SSH","SSH port"))}, singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),
                 modifier=Modifier.fillMaxWidth())
             OutlinedTextField(value=username,onValueChange={username=it.take(32);status=null},
-                label={Text("Usuario Linux")},singleLine=true,modifier=Modifier.fillMaxWidth())
-            Text("Verificación de identidad del servidor",fontWeight=FontWeight.SemiBold)
+                label={Text(tr("Usuario Linux","Linux username"))},singleLine=true,modifier=Modifier.fillMaxWidth())
+            Text(tr("Verificación de identidad del servidor","Server identity verification"),fontWeight=FontWeight.SemiBold)
             RemoteHint("Copia la línea de clave pública del host desde una sesión Linux confiable; verifica antes su fingerprint SHA256. Para otros puertos usa [host]:puerto en la primera columna.")
             OutlinedTextField(value=knownHostLine,onValueChange={knownHostLine=it.take(5000);status=null},
-                label={Text("Línea known_hosts verificada")},minLines=3,maxLines=5,
+                label={Text(tr("Línea known_hosts verificada","Verified known_hosts line"))},minLines=3,maxLines=5,
                 modifier=Modifier.fillMaxWidth())
             RemoteHint("Sin clave del servidor verificada, la conexión se rechaza. No uses una clave obtenida de una conexión SSH no verificada.",RemoteAmber)
         }
         RemoteCard {
-            Text("Autenticación",fontWeight=FontWeight.Bold)
+            Text(tr("Autenticación","Authentication"),fontWeight=FontWeight.Bold)
             Row(verticalAlignment=Alignment.CenterVertically) {
                 RadioButton(selected=method=="password",onClick={method="password";status=null})
-                Text("Contraseña")
+                Text(tr("Contraseña","Password"))
                 Spacer(Modifier.width(10.dp))
                 RadioButton(selected=method=="key",onClick={method="key";status=null})
-                Text("Clave SSH")
+                Text(tr("Clave SSH","SSH key"))
             }
             if(method=="password") {
                 OutlinedTextField(
                     value=password,onValueChange={password=it;status=null},
-                    label={Text("Contraseña SSH (solo esta sesión)")},
+                    label={Text(tr("Contraseña SSH (solo esta sesión)","SSH password (this session only)"))},
                     singleLine=true,visualTransformation=PasswordVisualTransformation(),
                     modifier=Modifier.fillMaxWidth()
                 )
@@ -120,12 +125,12 @@ fun RemoteLinuxScreen(onBack: () -> Unit) {
                     Text(if(privateKeyUri!=null) "Clave seleccionada" else "Importar clave privada por archivo")
                 }
                 OutlinedTextField(value=passphrase,onValueChange={passphrase=it;status=null},
-                    label={Text("Frase de protección (si existe)")},
+                    label={Text(tr("Frase de protección (si existe)","Key passphrase (if any)"))},
                     visualTransformation=PasswordVisualTransformation(),singleLine=true,
                     modifier=Modifier.fillMaxWidth())
             }
             RemoteHint("La clave privada se copia temporalmente para SSH y se elimina al terminar. Ni contraseña ni frase se guardan en preferencias.")
-            Button(enabled=!busy,onClick={
+            Button(enabled=!busy && !preferences.offlineOnly,onClick={
                 busy=true;status=null;latest=null
                 scope.launch {
                     try {
@@ -167,7 +172,7 @@ fun RemoteLinuxScreen(onBack: () -> Unit) {
                 }
             }
             RemoteCard {
-                Text("Captura pasiva autorizada",fontWeight=FontWeight.Bold)
+                Text(tr("Captura pasiva autorizada","Authorized passive capture"),fontWeight=FontWeight.Bold)
                 RemoteHint("Máximo 30 segundos, 500 paquetes y 32 MiB. Requiere permisos tcpdump en el Linux y una interfaz monitor ya preparada.")
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     listOf(5,10,15,30).forEach { value ->
@@ -179,10 +184,10 @@ fun RemoteLinuxScreen(onBack: () -> Unit) {
                 }
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     Checkbox(checked=authorized,onCheckedChange={authorized=it})
-                    Text("Confirmo que tengo autorización para capturar en esta red",
+                    Text(tr("Confirmo que tengo autorización para capturar en esta red","I confirm I am authorized to capture on this network"),
                         fontSize=12.sp,lineHeight=16.sp,modifier=Modifier.weight(1f))
                 }
-                val canCapture=!busy && authorized && s.captureAvailable &&
+                val canCapture=!busy && !preferences.offlineOnly && authorized && s.captureAvailable &&
                     s.interfaces.any { it.name==selectedIface && it.monitor }
                 Button(enabled=canCapture,onClick={
                     busy=true
@@ -199,7 +204,7 @@ fun RemoteLinuxScreen(onBack: () -> Unit) {
                     Text(if(busy) "Procesando…" else "Capturar e importar al historial")
                 }
                 latest?.let { result ->
-                    Text("Captura importada",color=RemoteGreen,fontWeight=FontWeight.SemiBold)
+                    Text(tr("Captura importada","Capture imported"),color=RemoteGreen,fontWeight=FontWeight.SemiBold)
                     RemoteHint("${result.format} · ${result.packets} paquetes · ${result.bytes} bytes")
                 }
                 RemoteHint("Una conexión verificada aquí no es una sesión SSH permanente; cada operación valida de nuevo el servidor y se autentica.")

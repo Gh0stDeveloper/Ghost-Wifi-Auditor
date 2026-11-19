@@ -27,20 +27,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
-private val Bg = Color(0xFF080A0D)
-private val CardBg = Color(0xFF232527)
-private val PanelBg = Color(0xFF14171B)
-private val Green = Color(0xFF54D98A)
-private val Blue = Color(0xFF66B9F1)
-private val Muted = Color(0xFFA9ACB3)
-private val Amber = Color(0xFFFFC87D)
+private val Bg: Color @Composable get() = LocalDesignColors.current.bg
+private val CardBg: Color @Composable get() = LocalDesignColors.current.card
+private val PanelBg: Color @Composable get() = LocalDesignColors.current.panel
+private val Green: Color @Composable get() = LocalDesignColors.current.accent
+private val Blue: Color @Composable get() = LocalDesignColors.current.blue
+private val Muted: Color @Composable get() = LocalDesignColors.current.secondary
+private val Amber: Color @Composable get() = LocalDesignColors.current.warning
 
 private data class DeviceItem(val name: String, val details: String, val support: String, val url: String)
 private val supported = listOf(
@@ -70,22 +72,55 @@ private val adapters = listOf(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { GhostTheme { MainShell() } }
+        setContent { GhostApp() }
+    }
+}
+
+@Composable private fun GhostApp() {
+    val ctx = LocalContext.current
+    var settings by remember { mutableStateOf(AppPreferences.load(ctx)) }
+    val colors = remember(settings.theme) { designColors(settings.theme) }
+    val density = LocalDensity.current
+    CompositionLocalProvider(
+        LocalUiPreferences provides settings,
+        LocalDesignColors provides colors,
+        LocalDensity provides Density(density.density, density.fontScale * settings.textScale)
+    ) {
+        GhostTheme {
+            MainShell(
+                settings = settings,
+                onSettingsChange = { newSettings ->
+                    settings = newSettings
+                    AppPreferences.save(ctx, newSettings)
+                }
+            )
+        }
     }
 }
 
 @Composable
 private fun GhostTheme(content: @Composable () -> Unit) {
-    val palette = darkColorScheme(
-        primary = Green, secondary = Blue, background = Bg, surface = CardBg,
-        onPrimary = Color.Black, onSecondary = Color.Black, onBackground = Color.White,
-        onSurface = Color.White
-    )
+    val colors = LocalDesignColors.current
+    val palette = if (LocalUiPreferences.current.theme == "light") {
+        lightColorScheme(
+            primary = colors.accent, secondary = colors.blue,
+            background = colors.bg, surface = colors.card,
+            onPrimary = Color.White, onSecondary = Color.White,
+            onBackground = colors.foreground, onSurface = colors.foreground
+        )
+    } else {
+        darkColorScheme(
+            primary = colors.accent, secondary = colors.blue,
+            background = colors.bg, surface = colors.card,
+            onPrimary = Color.Black, onSecondary = Color.Black,
+            onBackground = colors.foreground, onSurface = colors.foreground
+        )
+    }
     MaterialTheme(colorScheme = palette, typography = Typography(), content = content)
 }
 
 @Composable
-private fun MainShell() {
+private fun MainShell(settings: UiPreferences, onSettingsChange: (UiPreferences)->Unit) {
     var section by rememberSaveable { mutableStateOf("Inicio") }
     val screens = listOf("Inicio", "Auditoría", "Equipos", "Ajustes")
     val symbols = listOf(Icons.Filled.Home, Icons.Filled.Radar, Icons.Filled.Devices,
@@ -96,15 +131,20 @@ private fun MainShell() {
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = Bg,
         bottomBar = {
-            NavigationBar(containerColor = Color(0xFF101317)) {
+            NavigationBar(containerColor = CardBg) {
                 screens.forEachIndexed { idx, name ->
                     NavigationBarItem(
                         selected = section == name || (section == "About" && name == "Ajustes"), onClick = { section = name },
                         icon = { Icon(symbols[idx], contentDescription = name, modifier=Modifier.size(21.dp)) },
-                        label = { Text(name, fontSize=10.sp, maxLines=1) },
+                        label = { Text(when(name) {
+                            "Inicio" -> tr("Inicio", "Home")
+                            "Auditoría" -> tr("Auditoría","Audit")
+                            "Equipos" -> tr("Equipos","Devices")
+                            else -> tr("Ajustes","Settings")
+                        }, fontSize=10.sp, maxLines=1) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor=Green, selectedTextColor=Green,
-                            indicatorColor=Color(0xFF1C3428),
+                            indicatorColor=PanelBg,
                             unselectedIconColor=Muted, unselectedTextColor=Muted
                         )
                     )
@@ -123,7 +163,7 @@ private fun MainShell() {
                     Text("Ghost WiFi Auditor", fontWeight=FontWeight.Bold, fontSize=19.sp)
                     Text("WIRELESS SECURITY DASHBOARD", color=Muted, fontSize=10.sp)
                 }
-                IconButton(onClick={ section="Ajustes" }) { Icon(Icons.Filled.Settings,"Ajustes", tint=Muted) }
+                IconButton(onClick={ section="Ajustes" }) { Icon(Icons.Filled.Settings,tr("Ajustes","Settings"), tint=Muted) }
             }
         }
     ) { inset ->
@@ -136,7 +176,7 @@ private fun MainShell() {
                     "Auditoría" -> AuditScreen(onRemote = { section="Linux remoto" })
                     "Linux remoto" -> RemoteLinuxScreen(onBack={ section="Auditoría" })
                     "Equipos" -> DevicesScreen()
-                    "Ajustes" -> SettingsScreen(openAbout = { section="About" })
+                    "Ajustes" -> SettingsScreen(openAbout = { section="About" }, preferences=settings, onPreferencesChange=onSettingsChange)
                     else -> AboutScreen(onBack = { section="Ajustes" })
                 }
             }
@@ -176,8 +216,8 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
     var busy by remember { mutableStateOf(false) }
     var usb by remember { mutableIntStateOf(HardwareInspector.usbDevices(ctx).size) }
     Column(verticalArrangement=Arrangement.spacedBy(13.dp)) {
-        H1("Panel de control")
-        Small("Diagnóstico actual, bajo demanda. Root y monitor no se conservan entre reinicios.")
+        H1(tr("Panel de control","Dashboard"))
+        Small(tr("Diagnóstico actual, bajo demanda. Root y monitor no se conservan entre reinicios.","Current on-demand diagnosis. Root and monitor status are not retained after reboot."))
         Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
             Panel(Modifier.weight(1f)) {
                 Icon(Icons.Filled.VerifiedUser,null,tint=Green)
@@ -187,7 +227,7 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
             }
             Panel(Modifier.weight(1f)) {
                 Icon(Icons.Filled.WifiTethering,null,tint=Blue)
-                Text("Modo monitor",fontWeight=FontWeight.SemiBold)
+                Text(tr("Modo monitor","Monitor mode"),fontWeight=FontWeight.SemiBold)
                 Small(monitor?.summary ?: "Sin comprobar",
                     if(monitor?.status==CapabilityStatus.SUPPORTED) Green else Muted)
             }
@@ -200,8 +240,8 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
             }
             Panel(Modifier.weight(1f)) {
                 Icon(Icons.Filled.Laptop,null,tint=Blue)
-                Text("Linux remoto",fontWeight=FontWeight.SemiBold)
-                Small("Próximo hito M4")
+                Text(tr("Linux remoto","Remote Linux"),fontWeight=FontWeight.SemiBold)
+                Small(tr("Próximo hito M4","M4 milestone"))
             }
         }
         PrimaryAction(if(busy) "Diagnosticando…" else "Comprobar dispositivo") {
@@ -221,7 +261,7 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
             }
         }
         if(root!=null || monitor!=null) Panel {
-            H2("Evidencia técnica")
+            H2(tr("Evidencia técnica","Technical evidence"))
             root?.let {
                 Small("Root: ${it.evidence}")
                 Small("Verificado: "+java.text.DateFormat.getDateTimeInstance().format(java.util.Date(it.observedAtEpochMs)))
@@ -236,7 +276,7 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
             }
             Small("‘Monitor anunciado’ no demuestra que el controlador permita capturar tramas. La app no altera interfaces.")
         }
-        H2("Seleccionar método de conexión")
+        H2(tr("Seleccionar método de conexión","Choose connection method"))
         ModeTile(Icons.Filled.PhoneAndroid,"Wi-Fi interno",
             "Verificar capacidades del controlador en este modelo",goAudit)
         ModeTile(Icons.Filled.Usb,"Adaptador Wi-Fi USB (OTG)",
@@ -246,7 +286,7 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
         Panel {
             StatusRow(Icons.Filled.Security,"Auditoría autorizada","Diagnóstico de solo lectura",Green)
             Small("No se ejecutan exploits, comandos propietarios ni modificaciones del kernel.")
-            TextButton(onClick=goSettings) { Text("Configuración de compatibilidad",color=Blue) }
+            TextButton(onClick=goSettings) { Text(tr("Configuración de compatibilidad","Compatibility settings"),color=Blue) }
         }
     }
 }
@@ -264,6 +304,8 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
 @Composable private fun AuditScreen(onRemote:()->Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val uiSettings = LocalUiPreferences.current
+    fun localize(es:String,en:String):String = if(uiSettings.language=="en") en else es
     var mode by rememberSaveable { mutableStateOf("Interno") }
     var captures by remember { mutableStateOf(CaptureRepository.list(context)) }
     var busy by remember { mutableStateOf(false) }
@@ -271,6 +313,23 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
     var selected by remember { mutableStateOf<CaptureEntry?>(null) }
     var confirmDelete by remember { mutableStateOf<CaptureEntry?>(null) }
     var exportEntry by remember { mutableStateOf<CaptureEntry?>(null) }
+    var search by rememberSaveable { mutableStateOf("") }
+    var sortOrder by rememberSaveable { mutableStateOf("newest") }
+    var editing by remember { mutableStateOf<CaptureEntry?>(null) }
+    var editedLabel by remember { mutableStateOf("") }
+    var editedNote by remember { mutableStateOf("") }
+    val visibleCaptures = remember(captures,search,sortOrder) {
+        val q = search.trim()
+        val filtered = captures.filter { entry ->
+            HistorySearch.matches(q,entry.displayName,entry.label,entry.note,
+                entry.source,entry.format)
+        }
+        when(sortOrder) {
+            "packets" -> filtered.sortedByDescending { it.packets }
+            "oldest" -> filtered.sortedBy { it.importedAt }
+            else -> filtered.sortedByDescending { it.importedAt }
+        }
+    }
     val pickPcap=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if(uri!=null && !busy) {
             scope.launch {
@@ -292,9 +351,22 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
         val item=exportEntry
         if(uri!=null && item!=null) scope.launch {
             try {
-                CaptureRepository.exportReport(context,item,uri)
+                CaptureRepository.exportReport(context,item,uri,uiSettings.includeIdentifiers)
                 message="Informe JSON guardado correctamente."
             } catch(ex: Exception) { message="Error al exportar informe: ${ex.message}" }
+        }
+    }
+    val pdfSaver=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        val item=exportEntry
+        if(uri!=null && item!=null) scope.launch {
+            try {
+                PdfReportExporter.export(context,item,uri,
+                    includeIdentifiers=uiSettings.includeIdentifiers,
+                    language=uiSettings.language)
+                message=localize("Informe PDF guardado correctamente.","PDF report saved.")
+            } catch(ex:Exception) {
+                message=localize("Error al exportar PDF: ","PDF export error: ")+ (ex.message ?: "error")
+            }
         }
     }
     val captureSaver=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
@@ -306,11 +378,44 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
             } catch(ex: Exception) { message="Error al exportar captura: ${ex.message}" }
         }
     }
+    if(editing!=null) {
+        val item=editing!!
+        AlertDialog(
+            onDismissRequest={editing=null},
+            title={Text(tr("Editar sesión","Edit session"))},
+            text={
+                Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value=editedLabel,onValueChange={editedLabel=it.take(80)},
+                        label={Text(tr("Etiqueta","Label"))},modifier=Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value=editedNote,onValueChange={editedNote=it.take(400)},
+                        label={Text(tr("Notas (privadas)","Notes (private)"))},
+                        maxLines=4,modifier=Modifier.fillMaxWidth())
+                    Small(tr("Las notas solo se incluyen en informes si autorizas compartir identificadores.",
+                        "Notes are included in exports only when identifiers are explicitly enabled."))
+                }
+            },
+            confirmButton={TextButton(onClick={
+                val saved=CaptureRepository.updateAnnotations(
+                    context,item.id,editedLabel,editedNote)
+                if(saved) {
+                    captures=CaptureRepository.list(context)
+                    selected=captures.firstOrNull { it.id==item.id }
+                    message=localize("Sesión actualizada","Session updated")
+                } else {
+                    message=localize("No se pudo guardar la sesión","Could not save session")
+                }
+                editing=null
+            }) { Text(tr("Guardar","Save")) }},
+            dismissButton={TextButton(onClick={editing=null}) { Text(tr("Cancelar","Cancel")) }}
+        )
+    }
     if(confirmDelete!=null) {
         val item=confirmDelete!!
         AlertDialog(
             onDismissRequest={confirmDelete=null},
-            title={Text("Eliminar captura")},
+            title={Text(tr("Eliminar captura","Delete capture"))},
             text={Text("Se eliminará el archivo importado y su historial local: ${item.displayName}.")},
             confirmButton={
                 TextButton(onClick={
@@ -319,21 +424,25 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
                     if(selected?.id==item.id) selected=null
                     message=if(removed) "Captura eliminada." else "No se pudo eliminar el archivo."
                     confirmDelete=null
-                }) { Text("Eliminar",color=Amber) }
+                }) { Text(tr("Eliminar","Delete"),color=Amber) }
             },
-            dismissButton={TextButton(onClick={confirmDelete=null}) { Text("Cancelar") }}
+            dismissButton={TextButton(onClick={confirmDelete=null}) { Text(tr("Cancelar","Cancel")) }}
         )
     }
     Column(verticalArrangement=Arrangement.spacedBy(13.dp)) {
-        H1("Centro de auditoría")
+        H1(tr("Centro de auditoría","Audit center"))
         Small("M3 · Análisis offline de tramas y gestión de capturas autorizadas.")
         Panel {
-            H2("Motor de captura")
+            H2(tr("Motor de captura","Capture engine"))
             listOf("Interno","USB OTG","Linux remoto").forEach { option ->
                 Row(verticalAlignment=Alignment.CenterVertically,modifier=Modifier.fillMaxWidth()
                     .clickable { mode=option }) {
                     RadioButton(selected=mode==option,onClick={mode=option})
-                    Text(option)
+                    Text(when(option) {
+                        "Interno" -> tr("Interno","Internal Wi-Fi")
+                        "Linux remoto" -> tr("Linux remoto","Remote Linux")
+                        else -> "USB OTG"
+                    })
                 }
             }
             HorizontalDivider(color=Color.DarkGray)
@@ -343,17 +452,19 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
                 else -> "SSH con verificación de host, agente Linux y descarga SFTP disponibles en M4; la captura requiere monitor real."
             })
             if(mode=="Linux remoto") {
-                OutlinedButton(onClick=onRemote,modifier=Modifier.fillMaxWidth()) {
+                if(uiSettings.offlineOnly) Small(tr("Modo sin conexión activo: desactívalo en Ajustes para utilizar SSH.",
+                    "Offline mode is active: disable it in Settings to use SSH."),Amber)
+                OutlinedButton(onClick=onRemote,enabled=!uiSettings.offlineOnly,modifier=Modifier.fillMaxWidth()) {
                     Icon(Icons.Filled.Laptop,null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Abrir conexión Linux segura")
+                    Text(tr("Abrir conexión Linux segura","Open secure Linux connection"))
                 }
             }
             StatusRow(Icons.Filled.RadioButtonUnchecked,"Captura interna / USB","Sin backend local validado",Amber)
             Small("La captura local sigue bloqueada; M4 usa exclusivamente el agente SSH Linux con una interfaz monitor verificada.")
         }
         Panel {
-            H2("Importación y análisis C++")
+            H2(tr("Importación y análisis C++","C++ import and analysis"))
             Small("PCAP y PCAPNG: valida bloques, límites y registros; clasifica tramas 802.11 en gestión, control y datos. No extrae contraseñas.")
             OutlinedButton(
                 onClick={pickPcap.launch(arrayOf("*/*"))},
@@ -367,29 +478,48 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
             Small(message,if(message.startsWith("Error")) Amber else Green)
         }
         Panel {
-            H2("Historial de capturas")
-            if(captures.isEmpty()) Small("Sin capturas importadas.")
-            captures.forEach { entry ->
+            H2(tr("Historial de capturas","Capture history"))
+            OutlinedTextField(
+                value=search,onValueChange={search=it.take(100)},
+                leadingIcon={Icon(Icons.Filled.Search,null)},
+                label={Text(tr("Buscar por nombre, etiqueta o nota","Search names, labels or notes"))},
+                modifier=Modifier.fillMaxWidth(),singleLine=true)
+            Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                listOf(
+                    "newest" to tr("Recientes","Recent"),
+                    "oldest" to tr("Antiguas","Oldest"),
+                    "packets" to tr("Paquetes","Packets")
+                ).forEach { (value,label) ->
+                    FilterChip(selected=sortOrder==value,
+                        onClick={sortOrder=value},label={Text(label,fontSize=11.sp)})
+                }
+            }
+            Small(tr("Sesiones: ","Sessions: ")+visibleCaptures.size.toString()+"/"+captures.size)
+            if(visibleCaptures.isEmpty()) Small(tr("No se encontraron sesiones.","No matching sessions."))
+            visibleCaptures.forEach { entry ->
                 val active=selected?.id==entry.id
                 Column(Modifier.fillMaxWidth().border(1.dp,
                     if(active) Green else Color(0xFF34383A),RoundedCornerShape(12.dp))
                     .clickable { selected=entry }.padding(11.dp),
                     verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                    Text(entry.displayName,fontWeight=FontWeight.Medium,fontSize=13.sp,
+                    Text(entry.label.ifBlank { entry.displayName },fontWeight=FontWeight.Medium,fontSize=13.sp,
                         maxLines=2,overflow=TextOverflow.Ellipsis)
-                    Small("${entry.format} · ${entry.packets} paquetes · ${entry.bytes} bytes",
+                    Small("${entry.format} · ${entry.packets} "+tr("paquetes","packets")+" · ${entry.bytes} bytes",
                         if(active) Green else Muted)
                     Small(java.text.DateFormat.getDateTimeInstance().format(java.util.Date(entry.importedAt)))
+                    Small(tr("Origen: ","Source: ")+(if(entry.source=="linux_ssh") "Linux SSH" else tr("Importación local","Local import")))
+                    if(entry.note.isNotBlank()) Small(entry.note,Muted)
                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick={selected=entry}) { Text("Detalles",color=Blue) }
-                        TextButton(onClick={confirmDelete=entry}) { Text("Eliminar",color=Amber) }
+                        TextButton(onClick={selected=entry}) { Text(tr("Detalles","Details"),color=Blue) }
+                        TextButton(onClick={editing=entry;editedLabel=entry.label;editedNote=entry.note}) { Text(tr("Editar","Edit"),color=Blue) }
+                        TextButton(onClick={confirmDelete=entry}) { Text(tr("Eliminar","Delete"),color=Amber) }
                     }
                 }
             }
         }
         selected?.let { entry ->
             Panel {
-                H2("Resultados de análisis")
+                H2(tr("Resultados de análisis","Analysis results"))
                 StatusRow(Icons.Filled.InsertDriveFile,"Formato",entry.format,Green)
                 StatusRow(Icons.Filled.List,"Paquetes",entry.packets.toString(),Green)
                 StatusRow(Icons.Filled.Settings,"Tramas de gestión",entry.summary.optLong("management").toString())
@@ -400,16 +530,24 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
                 val links=entry.summary.optJSONArray("linkTypes")
                 val linkLabels=links?.let { l -> (0 until l.length()).joinToString(", ") { l.optInt(it).toString() } }
                 Small("Tipos de enlace: ${linkLabels?.ifBlank { "no presentes" } ?: "desconocidos"}")
-                Small("Los resultados representan categorías de trama, no vulnerabilidades ni credenciales.")
+                Small(tr("Los resultados representan categorías de trama, no vulnerabilidades ni credenciales.",
+                    "These counts describe frame categories, not vulnerabilities or credentials."))
+                Small(tr("Cifrado, WPS, canal y RSSI: NO EVALUADOS.",
+                    "Encryption, WPS, channel and RSSI: NOT MEASURED."),Amber)
+                Small(tr("Privacidad de informes: ","Report privacy: ")+if(uiSettings.includeIdentifiers) "INCLUDE_IDENTIFIERS" else "REDACTED")
                 OutlinedButton(modifier=Modifier.fillMaxWidth(),onClick={
                     exportEntry=entry
                     reportSaver.launch("ghost-wifi-report-${entry.id.take(8)}.json")
-                }) { Text("Exportar informe JSON") }
+                }) { Text(tr("Exportar informe JSON","Export JSON report")) }
+                OutlinedButton(modifier=Modifier.fillMaxWidth(),onClick={
+                    exportEntry=entry
+                    pdfSaver.launch("ghost-wifi-report-${entry.id.take(8)}.pdf")
+                }) { Text(tr("Exportar informe PDF","Export PDF report")) }
                 OutlinedButton(modifier=Modifier.fillMaxWidth(),onClick={
                     exportEntry=entry
                     val suffix=if(entry.format=="PCAPNG") "pcapng" else "pcap"
                     captureSaver.launch("ghost-wifi-${entry.id.take(8)}.$suffix")
-                }) { Text("Exportar captura original") }
+                }) { Text(tr("Exportar captura original (sin anonimizar)","Export original capture (unredacted)")) }
             }
         }
     }
@@ -425,7 +563,7 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
     val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
     val relevant = remember(catalog,model) { DeviceCatalog.matching(catalog) }
     Column(verticalArrangement=Arrangement.spacedBy(13.dp)) {
-        H1("Equipos y compatibilidad")
+        H1(tr("Equipos y compatibilidad","Devices and compatibility"))
         Panel {
             H2("Este teléfono · $model")
             Small("Android ${android.os.Build.VERSION.RELEASE} · ${android.os.Build.DEVICE}")
@@ -445,14 +583,14 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
                 Small("No se recopilan MAC, IMEI, seriales ni contraseñas Wi-Fi.")
             }
             if(relevant.isEmpty()) {
-                Small("No hay entrada específica para este modelo: NO VERIFICADO.", Amber)
+                Small(tr("No hay entrada específica para este modelo: NO VERIFICADO.","No specific catalog entry: NOT VERIFIED."), Amber)
             } else {
                 relevant.forEach { Small("Catálogo: ${it.name} · ${it.level}",Amber) }
             }
         }
         Small("Catálogo local versionado. El soporte publicado suele exigir firmware, ROM y kernel específicos.")
         OutlinedTextField(value=search,onValueChange={search=it.take(80)},
-            label={Text("Buscar modelos documentados")},
+            label={Text(tr("Buscar modelos documentados","Find documented models"))},
             leadingIcon={Icon(Icons.Filled.Search,null)},singleLine=true,
             modifier=Modifier.fillMaxWidth())
         catalog.filter { it.name.contains(search,true) || it.requirements.contains(search,true) }
@@ -469,7 +607,7 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
                     Small("Evidencia: ${entry.evidenceDate} · Puede necesitar USB: ${if(entry.usbMayBeNeeded) "Sí" else "Depende"}")
                     if(entry.sourceUrl.startsWith("https://")) {
                         TextButton(onClick={openExternalLink(ctx,entry.sourceUrl)}) {
-                            Text("Ver fuente técnica",color=Blue)
+                            Text(tr("Ver fuente técnica","Technical reference"),color=Blue)
                         }
                     }
                 }
@@ -553,7 +691,7 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
                     if(!entry.permissionGranted) {
                         OutlinedButton(onClick={
                             usbMessage = UsbAdapterInspector.requestAccess(ctx,entry.deviceName)
-                        }) { Text("Solicitar permiso",fontSize=12.sp) }
+                        }) { Text(tr("Solicitar permiso","Request permission"),fontSize=12.sp) }
                     }
                 }
                 Small("Captura y modo monitor: NO VERIFICADOS",Amber)
@@ -565,14 +703,14 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
         }) {
             Icon(Icons.Filled.Refresh,null)
             Spacer(Modifier.width(6.dp))
-            Text("Actualizar USB")
+            Text(tr("Actualizar USB","Refresh USB"))
         }
         Small(usbMessage)
         Small("Si el dongle consume más energía que la que entrega el teléfono, usa un hub OTG con alimentación externa. No cargues módulos de otros kernels.")
     }
 }
 
-@Composable private fun SettingsScreen(openAbout:()->Unit) {
+@Composable private fun SettingsScreen(openAbout:()->Unit, preferences:UiPreferences, onPreferencesChange:(UiPreferences)->Unit) {
     val ctx=LocalContext.current
     val prefs=remember { ctx.getSharedPreferences("ghost_wifi_settings",android.content.Context.MODE_PRIVATE) }
     var rootMethod by remember { mutableStateOf(prefs.getString("root_method","Temporal") ?: "Temporal") }
@@ -580,9 +718,69 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
     var customAdapter by remember { mutableStateOf(prefs.getString("custom_adapter", "") ?: "") }
     var permitted by remember { mutableStateOf(prefs.getBoolean("authorization",true)) }
     Column(verticalArrangement=Arrangement.spacedBy(13.dp)) {
-        H1("Ajustes")
+        H1(tr("Ajustes","Settings"))
         Panel {
-            H2("Root y compatibilidad")
+            H2(tr("Idioma y apariencia","Language and appearance"))
+            Small(tr("Configuración local. Puedes cambiar el idioma sin reiniciar.",
+                "Local settings. Change language without restarting."))
+            Text(tr("Idioma de la aplicación","App language"),fontWeight=FontWeight.SemiBold)
+            Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                listOf("es" to "Español", "en" to "English").forEach { (code,label) ->
+                    FilterChip(selected=preferences.language==code,
+                        onClick={onPreferencesChange(preferences.copy(language=code))},
+                        label={Text(label)})
+                }
+            }
+            Text(tr("Tema","Theme"),fontWeight=FontWeight.SemiBold)
+            listOf(
+                "amoled" to tr("AMOLED negro","AMOLED black"),
+                "graphite" to tr("Grafito oscuro","Dark graphite"),
+                "light" to tr("Claro","Light")
+            ).forEach { (value,label) ->
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    RadioButton(selected=preferences.theme==value,
+                        onClick={onPreferencesChange(preferences.copy(theme=value))})
+                    Text(label,Modifier.clickable {
+                        onPreferencesChange(preferences.copy(theme=value))
+                    })
+                }
+            }
+            Text(tr("Escala de texto","Text scale")+
+                " · " + (preferences.textScale*100).toInt().toString()+"%",
+                fontWeight=FontWeight.SemiBold)
+            Slider(value=preferences.textScale,
+                onValueChange={onPreferencesChange(preferences.copy(textScale=it))},
+                valueRange=0.9f..1.3f,steps=3)
+            Small(tr("La escala se combina con el tamaño de fuente del sistema.",
+                "This scale is combined with Android's accessibility font size."))
+        }
+        Panel {
+            H2(tr("Privacidad y conexión","Privacy and connectivity"))
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Switch(checked=preferences.offlineOnly,
+                    onCheckedChange={onPreferencesChange(preferences.copy(offlineOnly=it))})
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(tr("Modo sin conexión","Offline-only mode"),fontSize=13.sp)
+                    Small(tr("Deshabilita sesiones SSH y fotografías remotas.",
+                        "Disables SSH sessions and remote adapter photos."))
+                }
+            }
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Checkbox(checked=preferences.includeIdentifiers,
+                    onCheckedChange={onPreferencesChange(preferences.copy(includeIdentifiers=it))})
+                Column(Modifier.weight(1f)) {
+                    Text(tr("Incluir identificadores en informes","Include identifiers in reports"),
+                        fontSize=13.sp)
+                    Small(tr("Desactivado por defecto: oculta nombres, notas y modelo del equipo en JSON/PDF.",
+                        "Off by default: redacts filenames, notes and device details from JSON/PDF."))
+                }
+            }
+            Small(tr("Exportar una captura original PCAP también exporta sus paquetes sin anonimizar.",
+                "Exporting an original PCAP file also exports its unredacted packets."),Amber)
+        }
+        Panel {
+            H2(tr("Root y compatibilidad","Root and compatibility"))
             Small("Preferencia de guía: no certifica el estado root. Verifica root desde Inicio en cada sesión.")
             listOf("Temporal","Persistente","Sin Root").forEach { item ->
                 Row(verticalAlignment=Alignment.CenterVertically) {
@@ -597,8 +795,8 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
             })
         }
         Panel {
-            H2("Adaptadores recomendados")
-            Small("Fotos de referencia para reconocer cada modelo. Verifica el chipset, revisión y controlador antes de comprar.")
+            H2(tr("Adaptadores recomendados","Recommended adapters"))
+            Small(tr("Fotos de referencia para reconocer cada modelo. Verifica el chipset, revisión y controlador antes de comprar.","Reference photos for identification. Verify chipset, revision and driver before buying."))
             adapters.forEach { a ->
                 Column(Modifier.fillMaxWidth().border(1.dp,Color(0xFF34383A),RoundedCornerShape(12.dp)).padding(10.dp)) {
                     Row(verticalAlignment=Alignment.Top, horizontalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -618,9 +816,9 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
                     }
                     Row(verticalAlignment=Alignment.CenterVertically) {
                         RadioButton(selected=selection==a.name,onClick={selection=a.name;prefs.edit().putString("adapter",a.name).apply()})
-                        Text("Seleccionar perfil",fontSize=12.sp,modifier=Modifier.clickable{selection=a.name;prefs.edit().putString("adapter",a.name).apply()})
+                        Text(tr("Seleccionar perfil","Select profile"),fontSize=12.sp,modifier=Modifier.clickable{selection=a.name;prefs.edit().putString("adapter",a.name).apply()})
                         Spacer(Modifier.weight(1f))
-                        TextButton(onClick={openExternalLink(ctx,a.officialUrl)}) { Text("Ver modelo",color=Blue,fontSize=12.sp) }
+                        TextButton(onClick={openExternalLink(ctx,a.officialUrl)}) { Text(tr("Ver modelo","View model"),color=Blue,fontSize=12.sp) }
                     }
                     if(selection==a.name) Small(a.note,Blue)
                 }
@@ -631,29 +829,29 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
                     value=customAdapter,
                     onValueChange={customAdapter=it.take(150);prefs.edit().putString("custom_adapter",customAdapter).apply()},
                     modifier=Modifier.fillMaxWidth(), singleLine=false,
-                    label={Text("Marca, chipset o VID:PID")},
+                    label={Text(tr("Marca, chipset o VID:PID","Brand, chipset or VID:PID"))},
                     placeholder={Text("Ej.: Adaptador USB 0E8D:7612")}
                 )
             }
             Small("El soporte anunciado por Kali NetHunter depende del kernel Android. Una imagen no confirma el chipset de una revisión concreta.")
         }
         Panel {
-            H2("Seguridad")
+            H2(tr("Seguridad","Security"))
             Row(verticalAlignment=Alignment.CenterVertically) {
                 Checkbox(checked=permitted,onCheckedChange={permitted=it;prefs.edit().putBoolean("authorization",it).apply()})
-                Text("Pedir confirmación de autorización",fontSize=13.sp)
+                Text(tr("Pedir confirmación de autorización","Require authorization confirmation"),fontSize=13.sp)
             }
             Small("Los cambios en esta pantalla son preferencias; no modifican el Wi-Fi ni el kernel.")
         }
         Panel {
-            H2("Información")
+            H2(tr("Información","Information"))
             Row(Modifier.fillMaxWidth().clickable(onClick=openAbout).padding(vertical=7.dp),
                 verticalAlignment=Alignment.CenterVertically) {
                 Icon(Icons.Filled.Info,null,tint=Green)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("About · Acerca de",fontWeight=FontWeight.SemiBold)
-                    Small("Créditos, canal, comunidad y código fuente")
+                    Small(tr("Créditos, canal, comunidad y código fuente","Credits, channel, community and source code"))
                 }
                 Icon(Icons.Filled.ChevronRight,null,tint=Muted)
             }
@@ -662,6 +860,12 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
 }
 
 @Composable private fun AdapterPhoto(url:String, name:String) {
+    if (LocalUiPreferences.current.offlineOnly) {
+        Box(Modifier.size(85.dp).background(PanelBg,RoundedCornerShape(9.dp)),contentAlignment=Alignment.Center) {
+            Icon(Icons.Filled.ImageOff,null,tint=Muted)
+        }
+        return
+    }
     SubcomposeAsyncImage(
         model=url, contentDescription="Fotografía de referencia: $name",
         modifier=Modifier.size(85.dp).clip(RoundedCornerShape(9.dp)),
@@ -683,26 +887,30 @@ private fun openExternalLink(ctx: android.content.Context, url: String) {
 @Composable private fun AboutScreen(onBack:()->Unit) {
     val ctx=LocalContext.current
     Column(verticalArrangement=Arrangement.spacedBy(13.dp)) {
-        TextButton(onClick=onBack) { Icon(Icons.Filled.ArrowBack,null); Spacer(Modifier.width(6.dp)); Text("Volver a Ajustes") }
+        TextButton(onClick=onBack) { Icon(Icons.Filled.ArrowBack,null); Spacer(Modifier.width(6.dp)); Text(tr("Volver a Ajustes","Back to Settings")) }
         Row(verticalAlignment=Alignment.CenterVertically) {
             Image(painterResource(R.drawable.ic_dragon),null,Modifier.size(76.dp))
             Spacer(Modifier.width(12.dp))
             Column {
                 H1("Ghost WiFi Auditor")
-                Small("Versión 0.5.0-alpha · Hito M4")
+                Small(tr("Versión 0.6.0-alpha · Hito M5","Version 0.6.0-alpha · Milestone M5"))
                 Small("Dragón original · AMOLED grafito",Green)
             }
         }
         Panel {
-            H2("Créditos")
+            H2(tr("Créditos","Credits"))
             Text("Ghost Developer",fontSize=18.sp,fontWeight=FontWeight.Bold,color=Green)
             Small("Dirección del proyecto, diseño, desarrollo e integración.")
             HorizontalDivider(color=Color.DarkGray)
-            Small("Kotlin · Jetpack Compose · Android USB Host · C++/JNI")
-            Small("Las herramientas de terceros conservan sus licencias y atribuciones.")
+            Small("Kotlin · Jetpack Compose · Android USB Host · C++/JNI · SSHJ · Android PdfDocument")
+            Small(tr("Las bibliotecas de terceros conservan sus licencias y atribuciones.",
+                    "Third-party libraries retain their original licenses and attribution."))
+            TextButton(onClick={openExternalLink(ctx,"https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/tree/main")}) {
+                Text(tr("Ver bibliotecas y licencias","View libraries and licenses"),color=Blue)
+            }
         }
         Panel {
-            H2("Canales oficiales")
+            H2(tr("Canales oficiales","Official channels"))
             OutlinedButton(onClick={openExternalLink(ctx,"https://t.me/GhostDeve")},modifier=Modifier.fillMaxWidth()) {
                 Icon(Icons.Filled.Campaign,null,tint=Blue)
                 Spacer(Modifier.width(8.dp)); Text("Únete a nuestro canal · @GhostDeve")
@@ -713,15 +921,15 @@ private fun openExternalLink(ctx: android.content.Context, url: String) {
             }
         }
         Panel {
-            H2("Código fuente")
+            H2(tr("Código fuente","Source code"))
             Small("Código fuente público, seguimiento de cambios y documentación del proyecto.")
             OutlinedButton(onClick={openExternalLink(ctx,"https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor")}, modifier=Modifier.fillMaxWidth()) {
                 Icon(Icons.Filled.Code,null)
-                Spacer(Modifier.width(8.dp)); Text("Abrir repositorio GitHub")
+                Spacer(Modifier.width(8.dp)); Text(tr("Abrir repositorio GitHub","Open GitHub repository"))
             }
         }
         Panel {
-            H2("Aviso")
+            H2(tr("Aviso","Notice"))
             Small("Aplicación para auditorías autorizadas. La compatibilidad con modo monitor depende del teléfono, kernel, driver, firmware y adaptador.")
         }
     }

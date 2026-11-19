@@ -9,16 +9,30 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 
 <p align="center">
   <a href="https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions"><img alt="Android CI" src="https://img.shields.io/github/actions/workflow/status/Gh0stDeveloper/Ghost-Wifi-Auditor/android.yml?label=Android%20CI&logo=githubactions"/></a>
-  <img alt="Development stage" src="https://img.shields.io/badge/estado-alpha%200.5.0-F0AD4E"/>
+  <img alt="Development stage" src="https://img.shields.io/badge/estado-alpha%200.6.0-F0AD4E"/>
   <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white"/>
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white"/>
   <a href="https://t.me/GhostDeve"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-Canal%20oficial-26A5E4?logo=telegram&logoColor=white"/></a>
 </p>
 
 > [!IMPORTANT]
-> **Estado:** proyecto Android en fase **alpha / diagnóstico (M1)**. El código de la interfaz y las comprobaciones de hardware son una base de desarrollo. No se debe afirmar que la app ya permite capturar paquetes, activar modo monitor en cualquier teléfono, obtener contraseñas o instalar controladores automáticamente. Las funciones dependen del modelo, *kernel*, *firmware*, chipset y permisos.
+> **Estado:** proyecto Android en fase **alpha (M5)**. El código de la interfaz y las comprobaciones de hardware son una base de desarrollo. No se debe afirmar que la app ya permite capturar paquetes, activar modo monitor en cualquier teléfono, obtener contraseñas o instalar controladores automáticamente. Las funciones dependen del modelo, *kernel*, *firmware*, chipset y permisos.
 
 **Estado de CI M4 (2026-11-19):** [GitHub Actions #44583206158](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44583206158) compiló `0.5.0-alpha` (commit `8218dd2`) y aprobó pruebas Python/Linux, pruebas nativas C++ y pruebas unitarias Android. `assembleDebug` con R8, `mapping.txt` y publicación del artefacto `ghost-wifi-debug` correctos. Se corrigió el empaquetado duplicado de metadatos Bouncy Castle en Android. **La release con firma persistente no se generó** porque todavía faltan `GHOST_WIFI_*` GitHub Secrets. El cliente SSH y el motor de captura remoto **no están validados en hardware real**.
+
+## Hito M5 — Informes, historial, idiomas y personalización (0.6.0-alpha)
+
+- **Historial mejorado:** búsqueda por nombre, etiqueta, nota, tipo de captura y origen; orden por más reciente, más antigua o mayor cantidad de paquetes.
+- **Etiquetas y notas privadas:** edición persistente del título/nota sin modificar el contenido de los archivos PCAP. Los metadatos anteriores se siguen leyendo con valores predeterminados para migración.
+- **Informes JSON versión 2:** valores reales de paquetes y categorías; indica `NOT_MEASURED` para cifrado anunciado, WPS, canal y RSSI, que el analizador aún **no mide**. No se generan hallazgos falsos.
+- **Informes PDF:** exportación mediante `android.graphics.pdf.PdfDocument`, desde el selector de documentos Android y sin bibliotecas PDF de terceros. El informe contiene metadatos de la captura y advertencias de interpretación, no datos de paquetes.
+- **Protección de privacidad:** JSON y PDF **omiten por defecto** filename, etiquetas, notas, modelo de dispositivo y adaptador. Solo se incluyen tras habilitar expresamente **Ajustes → Incluir identificadores en informes**. Exportar el **PCAP original** siempre conserva datos originales y se identifica como operación sin anonimización.
+- **Idiomas:** selector en Ajustes, español (predeterminado) e inglés para navegación y pantallas principales. Las cadenas técnicas y parte del diagnóstico avanzado aún requieren revisión lingüística integral antes de la versión estable.
+- **Apariencia:** AMOLED negro, grafito oscuro y modo claro, cambio en vivo y preferencia persistida; escala de texto que se combina con accesibilidad del sistema.
+- **Modo sin conexión:** impide operaciones remotas SSH y carga de fotografías de adaptadores; el análisis de PCAP local y los informes funcionan sin conexión. Los enlaces externos requieren intervención explícita del usuario.
+- **About:** versión de aplicación 0.6.0-alpha, créditos, canal, comunidad, repositorio y enlace a licencias/bibliotecas.
+
+**Pendiente de validación real:** diseño de los temas y PDF en Android físico, accesibilidad, ciclo de vida, gestión de sesiones, traducciones técnicas completas y pruebas de hardware de M2–M4. No se afirma compatibilidad universal ni auditoría inalámbrica completa sin drivers.
 
 ## Hito M4 — Linux remoto con SSH y SFTP (0.5.0-alpha)
 
@@ -67,7 +81,7 @@ La pantalla **Auditoría → Linux remoto** incluye integración real de red usa
 - Pruebas unitarias de emparejamiento exacto y estado conservador de módulos; el Debug ahora también usa **R8**.
 - La firma persistente puede utilizarse en CI si están configurados los secretos privados `GHOST_WIFI_*`. Sin esos secretos, el Debug del runner se firma temporalmente y **no garantiza actualizar una APK anterior**.
 
-**Pendiente:** pruebas con adaptadores físicos, creación de una interfaz monitor válida, capturas y motor SSH. USB Host no instala drivers por sí mismo.
+**Pendiente:** pruebas físicas con adaptadores y captura Android en vivo; el motor SSH básico ya se integró en M4 (no validado en un servidor físico). USB Host no instala drivers por sí mismo.
 
 ## Hito M1 — Diagnóstico estructurado (0.2.0-alpha)
 
