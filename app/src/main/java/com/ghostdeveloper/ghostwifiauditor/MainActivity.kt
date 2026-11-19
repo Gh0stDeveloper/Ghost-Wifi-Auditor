@@ -862,7 +862,7 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
 @Composable private fun AdapterPhoto(url:String, name:String) {
     if (LocalUiPreferences.current.offlineOnly) {
         Box(Modifier.size(85.dp).background(PanelBg,RoundedCornerShape(9.dp)),contentAlignment=Alignment.Center) {
-            Icon(Icons.Filled.ImageOff,null,tint=Muted)
+            Icon(Icons.Filled.Image,null,tint=Muted)
         }
         return
     }
