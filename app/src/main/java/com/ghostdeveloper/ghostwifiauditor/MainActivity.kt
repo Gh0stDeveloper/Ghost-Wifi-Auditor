@@ -646,12 +646,12 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
             addAction(android.hardware.usb.UsbManager.ACTION_USB_DEVICE_DETACHED)
             addAction(ACTION_GHOST_USB_CHANGED)
         }
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
-            ctx.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            ctx.registerReceiver(receiver, filter)
-        }
+        // Both the internal refresh event and device attach/detach events are
+        // observed through a non-exported receiver. AndroidX handles API 26–35.
+        androidx.core.content.ContextCompat.registerReceiver(
+            ctx, receiver, filter,
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         onDispose { runCatching { ctx.unregisterReceiver(receiver) } }
     }
     Panel {
