@@ -1,0 +1,56 @@
+[
+  {
+    "id": "nexus5",
+    "name": "Google Nexus 5",
+    "modelPatterns": [
+      "Nexus 5"
+    ],
+    "support": "Monitor interno documentado con firmware Nexmon modificado.",
+    "requirements": "Requiere firmware/kernel y herramienta compatibles; no asumir soporte en Android original.",
+    "sourceUrl": "https://www.kali.org/docs/nethunter/wireless-cards/",
+    "evidenceDate": "2026-11-19",
+    "level": "DOCUMENTADO_CONDICIONAL",
+    "usbMayBeNeeded": true
+  },
+  {
+    "id": "oneplus7",
+    "name": "OnePlus 7 / 7 Pro / 7T / 7T Pro",
+    "modelPatterns": [
+      "OnePlus 7",
+      "OnePlus 7T"
+    ],
+    "support": "NetHunter documenta modo monitor interno en variantes específicas.",
+    "requirements": "NetHunter/LineageOS 23.2 y kernel exacto soportado; no stock.",
+    "sourceUrl": "https://nethunter.kali.org/kernels",
+    "evidenceDate": "2026-11-19",
+    "level": "DOCUMENTADO_CONDICIONAL",
+    "usbMayBeNeeded": true
+  },
+  {
+    "id": "samsungS10",
+    "name": "Samsung Galaxy S10 (familia)",
+    "modelPatterns": [
+      "Galaxy S10",
+      "SM-G97"
+    ],
+    "support": "NetHunter documenta soluciones Nexmon para variantes compatibles.",
+    "requirements": "Comprobar variante/SKU y requisitos de ROM/kernel y firmware.",
+    "sourceUrl": "https://www.kali.org/docs/nethunter/installing-nethunter-on-the-samsung-galaxy-s10/",
+    "evidenceDate": "2026-11-19",
+    "level": "DOCUMENTADO_CONDICIONAL",
+    "usbMayBeNeeded": true
+  },
+  {
+    "id": "redmi14c",
+    "name": "Xiaomi Redmi 14C",
+    "modelPatterns": [
+      "Redmi 14C"
+    ],
+    "support": "Modo monitor estándar rechazado en un equipo de prueba concreto (no toda la familia).",
+    "requirements": "Reporte del usuario: HyperOS 3, Android 16, kernel 6.6.89-android15-8 y controlador wlan_drv_gen4m_6768; iw devolvió EOPNOTSUPP (-95). No extrapolar a otras variantes.",
+    "sourceUrl": "",
+    "evidenceDate": "2026-11-18",
+    "level": "OBSERVACION_NO_REPLICADA",
+    "usbMayBeNeeded": true
+  }
+]

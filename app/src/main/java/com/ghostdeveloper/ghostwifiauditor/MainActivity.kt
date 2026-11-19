@@ -164,57 +164,89 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
 }
 
 @Composable private fun HomeScreen(goAudit:()->Unit,goSettings:()->Unit) {
-    val ctx=LocalContext.current
-    val scope=rememberCoroutineScope()
-    var root by remember { mutableStateOf("Sin comprobar") }
-    var monitor by remember { mutableStateOf("Sin comprobar") }
-    var usb by remember { mutableStateOf(HardwareInspector.usbDevices(ctx).size) }
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var root by remember { mutableStateOf<DiagnosticFinding?>(null) }
+    var monitor by remember { mutableStateOf<DiagnosticFinding?>(null) }
+    var details by remember { mutableStateOf<DeviceFingerprint?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var usb by remember { mutableIntStateOf(HardwareInspector.usbDevices(ctx).size) }
     Column(verticalArrangement=Arrangement.spacedBy(13.dp)) {
         H1("Panel de control")
-        Small("Diagnóstico del teléfono actual; los estados no se simulan.")
+        Small("Diagnóstico actual, bajo demanda. Root y monitor no se conservan entre reinicios.")
         Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
             Panel(Modifier.weight(1f)) {
                 Icon(Icons.Filled.VerifiedUser,null,tint=Green)
                 Text("Root",fontWeight=FontWeight.SemiBold)
-                Small(root,if(root.startsWith("Root confirmado")) Green else Muted)
+                Small(root?.summary ?: "Sin comprobar",
+                    if(root?.status==CapabilityStatus.SUPPORTED) Green else Muted)
             }
             Panel(Modifier.weight(1f)) {
                 Icon(Icons.Filled.WifiTethering,null,tint=Blue)
-                Text("Monitor",fontWeight=FontWeight.SemiBold)
-                Small(monitor)
+                Text("Modo monitor",fontWeight=FontWeight.SemiBold)
+                Small(monitor?.summary ?: "Sin comprobar",
+                    if(monitor?.status==CapabilityStatus.SUPPORTED) Green else Muted)
             }
         }
         Row(horizontalArrangement=Arrangement.spacedBy(9.dp)) {
             Panel(Modifier.weight(1f)) {
                 Icon(Icons.Filled.Usb,null,tint=Blue)
                 Text("USB OTG",fontWeight=FontWeight.SemiBold)
-                Small("$usb dispositivo(s) enumerados")
+                Small("$usb dispositivo(s) detectado(s)")
             }
             Panel(Modifier.weight(1f)) {
                 Icon(Icons.Filled.Laptop,null,tint=Blue)
                 Text("Linux remoto",fontWeight=FontWeight.SemiBold)
-                Small("No configurado")
+                Small("Próximo hito M4")
             }
         }
-        PrimaryAction("Comprobar Root y modo monitor") {
-            scope.launch {
-                root="Comprobando…"; monitor="Comprobando…"
-                root=HardwareInspector.rootState()
-                monitor=HardwareInspector.monitorState()
-                usb=HardwareInspector.usbDevices(ctx).size
+        PrimaryAction(if(busy) "Diagnosticando…" else "Comprobar dispositivo") {
+            if(!busy) scope.launch {
+                busy = true
+                try {
+                    // No cached root result; each check verifies the current session.
+                    root = HardwareInspector.rootDiagnostic(ctx)
+                    monitor = HardwareInspector.monitorDiagnostic(
+                        ctx, root?.status == CapabilityStatus.SUPPORTED
+                    )
+                    details = HardwareInspector.deviceInfo(ctx)
+                    usb = HardwareInspector.usbDevices(ctx).size
+                } finally {
+                    busy = false
+                }
             }
+        }
+        if(root!=null || monitor!=null) Panel {
+            H2("Evidencia técnica")
+            root?.let {
+                Small("Root: ${it.evidence}")
+                Small("Verificado: "+java.text.DateFormat.getDateTimeInstance().format(java.util.Date(it.observedAtEpochMs)))
+            }
+            monitor?.let {
+                Small("Monitor: ${it.evidence}")
+                Small("Verificado: "+java.text.DateFormat.getDateTimeInstance().format(java.util.Date(it.observedAtEpochMs)))
+            }
+            details?.let {
+                Small("Android ${it.android} · Kernel ${it.kernel}")
+                Small("Wi-Fi: ${it.wlanDriver} · Firmware: ${it.wlanFirmware}")
+            }
+            Small("‘Monitor anunciado’ no demuestra que el controlador permita capturar tramas. La app no altera interfaces.")
         }
         H2("Seleccionar método de conexión")
-        ModeTile(Icons.Filled.PhoneAndroid,"Wi-Fi interno", "Usar el hardware integrado cuando admita monitor",goAudit)
-        ModeTile(Icons.Filled.Usb,"Adaptador Wi-Fi USB (OTG)","Chipsets configurables y verificación de drivers",goAudit)
-        ModeTile(Icons.Filled.Laptop,"Conexión remota Linux", "Panel Android para un equipo Linux compatible",goAudit)
+        ModeTile(Icons.Filled.PhoneAndroid,"Wi-Fi interno",
+            "Verificar capacidades del controlador en este modelo",goAudit)
+        ModeTile(Icons.Filled.Usb,"Adaptador Wi-Fi USB (OTG)",
+            "Chipsets configurables; comprobar controlador y alimentación",goAudit)
+        ModeTile(Icons.Filled.Laptop,"Conexión remota Linux",
+            "Panel Android para un equipo Linux compatible (pendiente)",goAudit)
         Panel {
-            StatusRow(Icons.Filled.Security,"Auditoría autorizada","Solo lectura",Green)
-            Small("No se modifica el kernel, no se fuerza la interfaz Wi-Fi ni se ejecutan ataques automáticamente.")
-            TextButton(onClick=goSettings) { Text("Configurar compatibilidad",color=Blue) }
+            StatusRow(Icons.Filled.Security,"Auditoría autorizada","Diagnóstico de solo lectura",Green)
+            Small("No se ejecutan exploits, comandos propietarios ni modificaciones del kernel.")
+            TextButton(onClick=goSettings) { Text("Configuración de compatibilidad",color=Blue) }
         }
     }
 }
+
 @Composable private fun ModeTile(icon:ImageVector,title:String,desc:String,onClick:()->Unit) {
     Row(Modifier.fillMaxWidth().border(1.dp,Color(0xFF303439),RoundedCornerShape(14.dp))
         .clickable(onClick=onClick).padding(15.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -283,47 +315,91 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
 }
 
 @Composable private fun DevicesScreen() {
-    val ctx=LocalContext.current
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val catalog = remember { DeviceCatalog.load(ctx) }
+    val local = remember { ctx.getSharedPreferences("ghost_wifi_local_devices",android.content.Context.MODE_PRIVATE) }
     var search by rememberSaveable { mutableStateOf("") }
+    var customName by remember { mutableStateOf(local.getString("custom_name", "") ?: "") }
+    var customNotes by remember { mutableStateOf(local.getString("custom_notes", "") ?: "") }
     var usbList by remember { mutableStateOf(HardwareInspector.usbDevices(ctx)) }
-    val detected = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+    var profile by remember { mutableStateOf<DeviceFingerprint?>(null) }
+    var scanning by remember { mutableStateOf(false) }
+    val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+    val relevant = remember(catalog,model) { DeviceCatalog.matching(catalog) }
     Column(verticalArrangement=Arrangement.spacedBy(13.dp)) {
-        H1("Equipos compatibles")
+        H1("Equipos y compatibilidad")
         Panel {
-            H2("Mi teléfono: $detected")
+            H2("Este teléfono · $model")
             Small("Android ${android.os.Build.VERSION.RELEASE} · ${android.os.Build.DEVICE}")
-            Small("La compatibilidad del hardware debe comprobarse en Inicio. No se infiere solo por el modelo.")
-        }
-        Small("Compatibilidad documentada para kernels/ROM específicos. No implica soporte de fábrica.")
-        OutlinedTextField(value=search,onValueChange={search=it},label={Text("Buscar un dispositivo")},
-            leadingIcon={Icon(Icons.Filled.Search,null)},singleLine=true,modifier=Modifier.fillMaxWidth())
-        supported.filter { it.name.contains(search,true)||it.details.contains(search,true) }.forEach { device ->
-            Panel {
-                Text(device.name,fontWeight=FontWeight.SemiBold)
-                Small(device.support,Green)
-                Small(device.details)
-                TextButton(onClick={
-                    ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
-                        android.net.Uri.parse(device.url)))
-                }) { Text("Ver referencia técnica",color=Blue) }
+            Small("Ninguna compatibilidad se concede solo por coincidir el nombre del equipo.")
+            OutlinedButton(enabled=!scanning, onClick={
+                scope.launch {
+                    scanning = true
+                    try { profile = HardwareInspector.deviceInfo(ctx) }
+                    finally { scanning = false }
+                }
+            }) { Text(if(scanning) "Leyendo…" else "Actualizar información del dispositivo") }
+            profile?.let {
+                Small("Build: ${it.build}")
+                Small("Kernel: ${it.kernel}")
+                Small("Driver: ${it.wlanDriver}")
+                Small("Firmware WLAN: ${it.wlanFirmware}")
+                Small("No se recopilan MAC, IMEI, seriales ni contraseñas Wi-Fi.")
+            }
+            if(relevant.isEmpty()) {
+                Small("No hay entrada específica para este modelo: NO VERIFICADO.", Amber)
+            } else {
+                relevant.forEach { Small("Catálogo: ${it.name} · ${it.level}",Amber) }
             }
         }
+        Small("Catálogo local versionado. El soporte publicado suele exigir firmware, ROM y kernel específicos.")
+        OutlinedTextField(value=search,onValueChange={search=it.take(80)},
+            label={Text("Buscar modelos documentados")},
+            leadingIcon={Icon(Icons.Filled.Search,null)},singleLine=true,
+            modifier=Modifier.fillMaxWidth())
+        catalog.filter { it.name.contains(search,true) || it.requirements.contains(search,true) }
+            .forEach { entry ->
+                Panel {
+                    Text(entry.name,fontWeight=FontWeight.SemiBold)
+                    Small(when(entry.level) {
+                        "DOCUMENTADO_CONDICIONAL" -> "Documentado con requisitos específicos"
+                        "OBSERVACION_NO_REPLICADA" -> "Observación de usuario, sin replicación independiente"
+                        else -> "Sin verificar"
+                    },Amber)
+                    Small(entry.support)
+                    Small(entry.requirements)
+                    Small("Evidencia: ${entry.evidenceDate} · Puede necesitar USB: ${if(entry.usbMayBeNeeded) "Sí" else "Depende"}")
+                    if(entry.sourceUrl.startsWith("https://")) {
+                        TextButton(onClick={openExternalLink(ctx,entry.sourceUrl)}) {
+                            Text("Ver fuente técnica",color=Blue)
+                        }
+                    }
+                }
+            }
         Panel {
-            H2("Otros Android: Xiaomi, Samsung, Honor…")
-            Small("Si un modelo no aparece, se marca como SIN VERIFICAR. La app puede examinar su root e interfaces y recomendar adaptador externo o Linux remoto cuando corresponda.")
-            Small("Redmi 14C: en nuestras pruebas el controlador MediaTek Gen4m rechazó crear una interfaz monitor.",Amber)
-            Small("Incluso los teléfonos listados con monitor interno pueden necesitar un adaptador USB según firmware, kernel y modo de trabajo.")
+            H2("Otro dispositivo no listado")
+            Small("Puedes guardar una nota local. No la convierte en compatibilidad verificada.")
+            OutlinedTextField(value=customName,onValueChange={customName=it.take(100)},
+                label={Text("Marca / modelo")}, modifier=Modifier.fillMaxWidth())
+            OutlinedTextField(value=customNotes,onValueChange={customNotes=it.take(400)},
+                label={Text("Kernel, firmware y observaciones")},modifier=Modifier.fillMaxWidth(),
+                minLines=2,maxLines=4)
+            OutlinedButton(onClick={
+                local.edit().putString("custom_name",customName)
+                    .putString("custom_notes",customNotes).apply()
+            },enabled=customName.isNotBlank()) { Text("Guardar perfil local · Sin verificar") }
+            Small("Si el controlador no admite monitor, se sugerirá un adaptador compatible o un equipo Linux.")
         }
         Panel {
-            H2("USB conectados")
-            usbList.forEach { Small(it,color=Color.White) }
+            H2("Dispositivos USB conectados")
             if(usbList.isEmpty()) Small("No hay dispositivos USB enumerados.")
+            usbList.forEach { Small(it,color=Color.White) }
             OutlinedButton(onClick={usbList=HardwareInspector.usbDevices(ctx)}) {
                 Icon(Icons.Filled.Refresh,null)
-                Spacer(Modifier.width(8.dp))
-                Text("Actualizar USB")
+                Spacer(Modifier.width(8.dp)); Text("Actualizar USB")
             }
-            Small("VID/PID sirve para identificar dispositivos, pero no prueba disponibilidad de un driver.")
+            Small("VID/PID identifica hardware, pero no confirma que exista un driver funcional.")
         }
     }
 }
@@ -339,6 +415,7 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
         H1("Ajustes")
         Panel {
             H2("Root y compatibilidad")
+            Small("Preferencia de guía: no certifica el estado root. Verifica root desde Inicio en cada sesión.")
             listOf("Temporal","Persistente","Sin Root").forEach { item ->
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     RadioButton(selected=rootMethod==item,onClick={rootMethod=item;prefs.edit().putString("root_method",item).apply()})
@@ -444,7 +521,7 @@ private fun openExternalLink(ctx: android.content.Context, url: String) {
             Spacer(Modifier.width(12.dp))
             Column {
                 H1("Ghost WiFi Auditor")
-                Small("Versión 0.1.0-alpha · Diagnóstico")
+                Small("Versión 0.2.0-alpha · Hito M1")
                 Small("Dragón original · AMOLED grafito",Green)
             }
         }

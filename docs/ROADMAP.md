@@ -3,8 +3,8 @@
 **Project:** [Gh0stDeveloper/Ghost-Wifi-Auditor](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor)  
 **Owner / Developer:** Ghost Developer  
 **Working branch:** `main`  
-**Baseline:** `0.1.0-alpha` (2026-11-19)  
-**Status:** Android **Debug build passes CI**; real-hardware acceptance testing pending.
+**Baseline:** `0.2.0-alpha` M1 implementation (2026-11-19; CI/device QA still required)  
+**Status:** Previous v0.1 Debug build passed CI; v0.2 Debug/Unit CI must be checked after merge. Real-hardware acceptance testing pending.
 
 > This document is a development plan, not a claim that planned functions already work. "Compiled" does not mean "tested on device." No unsupported driver or monitor capability is to be labeled as available.
 
@@ -28,15 +28,15 @@
 
 **Goal:** Trustworthy status for every Android model, rather than merely rendering a static compatibility card.
 
-- [ ] Create a typed diagnostic model: `SUPPORTED / UNSUPPORTED / UNKNOWN / ERROR`, with evidence and timestamp.
-- [ ] Detect root *at runtime*, with no assumption that temporary root survives a reboot. Handle permission denial, missing `su`, timeouts and package-manager differences.
-- [ ] Check Android release, build fingerprint, SKU, kernel, driver, firmware and interface names without exposing device identifiers in exported reports.
-- [ ] Discover actual `iw` location and surface stderr/exit codes; distinguish "monitor advertised" from "operational".
+- [x] Create a typed diagnostic model: `SUPPORTED / UNSUPPORTED / UNKNOWN / ERROR`, with evidence and timestamp.
+- [x] Detect root *at runtime*, with no assumption that temporary root survives a reboot. Handle permission denial, missing `su`, timeouts and package-manager differences.
+- [x] Check Android release, build fingerprint, SKU, kernel, driver, firmware and interface names without exposing device identifiers in exported reports.
+- [x] Discover actual `iw` location and surface stderr/exit codes; distinguish "monitor advertised" from "operational".
 - [ ] Probe monitor capabilities **without mutating active Wi-Fi interfaces**. A real activation test must be user-approved, limited and reversible on supported hardware.
-- [ ] Keep a versioned local JSON device database with evidence links, date, driver/build constraints and status `unverified` by default. Support a separate `other device` profile.
-- [ ] Implement per-model root guidance: temporary / persistent / no root; never auto-run exploits or firmware flash commands.
+- [x] Keep a versioned local JSON device database with evidence links, date, driver/build constraints and status `unverified` by default. Support a separate `other device` profile.
+- [x] Implement per-model root guidance: temporary / persistent / no root; never auto-run exploits or firmware flash commands.
 
-**Acceptance:** Redmi 14C reports the known unsupported standard monitor test correctly; Samsung and Honor display `UNKNOWN` until measured. Rebooting clears any stale root-verification badge.
+**Acceptance (partial):** the parser distinguishes monitor advertised / not advertised / unknown and test cases cover malformed/missing data. Stored root verification is deliberately avoided so it cannot survive app recreation or reboot. Real-device acceptance on Redmi, Samsung, Honor is still pending. A real monitor activation test remains out of scope until a safe reversible design is verified.
 
 ## M2 — Multi-adapter USB OTG support
 

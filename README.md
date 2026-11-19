@@ -9,14 +9,26 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 
 <p align="center">
   <a href="https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions"><img alt="Android CI" src="https://img.shields.io/github/actions/workflow/status/Gh0stDeveloper/Ghost-Wifi-Auditor/android.yml?label=Android%20CI&logo=githubactions"/></a>
-  <img alt="Development stage" src="https://img.shields.io/badge/estado-alpha%200.1.0-F0AD4E"/>
+  <img alt="Development stage" src="https://img.shields.io/badge/estado-alpha%200.2.0-F0AD4E"/>
   <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white"/>
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white"/>
   <a href="https://t.me/GhostDeve"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-Canal%20oficial-26A5E4?logo=telegram&logoColor=white"/></a>
 </p>
 
 > [!IMPORTANT]
-> **Estado:** proyecto Android en fase **alpha / diagnóstico**. El código de la interfaz y las comprobaciones de hardware son una base de desarrollo. No se debe afirmar que la app ya permite capturar paquetes, activar modo monitor en cualquier teléfono, obtener contraseñas o instalar controladores automáticamente. Las funciones dependen del modelo, *kernel*, *firmware*, chipset y permisos.
+> **Estado:** proyecto Android en fase **alpha / diagnóstico (M1)**. El código de la interfaz y las comprobaciones de hardware son una base de desarrollo. No se debe afirmar que la app ya permite capturar paquetes, activar modo monitor en cualquier teléfono, obtener contraseñas o instalar controladores automáticamente. Las funciones dependen del modelo, *kernel*, *firmware*, chipset y permisos.
+
+## Hito M1 — Diagnóstico estructurado (0.2.0-alpha)
+
+- Estados definidos: **SUPPORTED / UNSUPPORTED / UNKNOWN / ERROR**, siempre con evidencia y hora de observación.
+- Consulta de superusuario bajo demanda; el estado nunca se reutiliza después de reiniciar o cerrar la aplicación.
+- El modo monitor se evalúa **solo** desde la sección `Supported interface modes` de `iw list`. «Anunciado» **no** significa «captura operativa».
+- Detalles locales: versión Android, build, kernel, controlador WLAN y firmware, sin recolectar MAC/IMEI/serial.
+- Catálogo de compatibilidad versionado en `app/src/main/assets/device_compatibility.v1.json`, con requisitos y fuentes. Los equipos no listados se consideran **no verificados**.
+- Perfil de «otro dispositivo» guardado únicamente en preferencias locales.
+- Pruebas unitarias del parser de root/monitor con JUnit, integradas en GitHub Actions.
+
+**Pendiente de validación:** instalación de la APK en teléfonos reales y pruebas de las diferencias entre controladores/firmware. El soporte funcional de modo monitor, USB Wi-Fi y Linux remoto sigue pendiente.
 
 ## Vista general
 
@@ -95,6 +107,10 @@ La app presenta fotografías de referencia con crédito al proveedor de la image
 
 ```text
 Ghost-Wifi-Auditor/
+├── app/src/main/assets/device_compatibility.v1.json
+├── app/src/main/java/com/ghostdeveloper/ghostwifiauditor/DiagnosticModels.kt
+├── app/src/main/java/com/ghostdeveloper/ghostwifiauditor/DeviceCatalog.kt
+├── app/src/test/java/com/ghostdeveloper/ghostwifiauditor/DiagnosticParsersTest.kt
 ├── assets/ghost-dragon.svg
 ├── app/
 │   ├── src/main/java/com/ghostdeveloper/ghostwifiauditor/
