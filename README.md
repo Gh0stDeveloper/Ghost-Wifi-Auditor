@@ -18,6 +18,8 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 > [!IMPORTANT]
 > **Estado:** proyecto Android en fase **alpha / diagnóstico (M1)**. El código de la interfaz y las comprobaciones de hardware son una base de desarrollo. No se debe afirmar que la app ya permite capturar paquetes, activar modo monitor en cualquier teléfono, obtener contraseñas o instalar controladores automáticamente. Las funciones dependen del modelo, *kernel*, *firmware*, chipset y permisos.
 
+**Estado de CI M4 (2026-11-19):** [GitHub Actions #44583206158](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44583206158) compiló `0.5.0-alpha` (commit `8218dd2`) y aprobó pruebas Python/Linux, pruebas nativas C++ y pruebas unitarias Android. `assembleDebug` con R8, `mapping.txt` y publicación del artefacto `ghost-wifi-debug` correctos. Se corrigió el empaquetado duplicado de metadatos Bouncy Castle en Android. **La release con firma persistente no se generó** porque todavía faltan `GHOST_WIFI_*` GitHub Secrets. El cliente SSH y el motor de captura remoto **no están validados en hardware real**.
+
 ## Hito M4 — Linux remoto con SSH y SFTP (0.5.0-alpha)
 
 La pantalla **Auditoría → Linux remoto** incluye integración real de red usando [SSHJ](https://github.com/hierynomus/sshj) 0.41.2:

@@ -3,7 +3,7 @@
 **Project:** [Gh0stDeveloper/Ghost-Wifi-Auditor](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor)  
 **Owner / Developer:** Ghost Developer  
 **Working branch:** `main`  
-**Baseline:** `0.5.0-alpha` M4 Linux SSH remote integration (CI and real host QA pending)  
+**Baseline:** `0.5.0-alpha` M4 Linux SSH integration (automated CI passed; real-host QA pending)  
 **Status (2026-11-19):** M1 v0.2 passed CI, and user confirmed root checks on a Redmi 14C. **M2 v0.3** CI [run #44563903907](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44563903907) passed unit tests, R8-minified Debug build, R8 mapping check and APK artifact upload (commit `5406aaa`). Persistent signing secrets were not configured; signed-release steps were skipped. Physical USB adapter QA is pending.
 
 > This document is a development plan, not a claim that planned functions already work. "Compiled" does not mean "tested on device." No unsupported driver or monitor capability is to be labeled as available.
@@ -163,6 +163,7 @@ Every release must include: **version/build, branch/commit, what changed (screen
 - [x] Strict host-key pinning, fixed agent command paths, bounded session/transfer, no arbitrary shell entry.
 - [x] Python agent at `linux/ghost_wifi_agent.py` with list/capture/cleanup and unit tests (CI integration).
 - [x] Capture transferred over SFTP and imported into M3 private PCAP history.
-- [ ] CI build and R8 minification for v0.5.0-alpha, Android device smoke test, signed release.
+- [x] CI Python tests, C++ tests, Android unit tests, R8-minified Debug build and APK artifact via [GitHub Actions #44583206158](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44583206158).
+- [ ] Android device smoke test and signed release with original persistent key; GitHub Secrets not configured.
 - [ ] Physical test against a real Linux SSH server with compatible monitor interface and sudo/capabilities configured safely.
 - [ ] Test network interruptions, SFTP failures, host key changes, large transfers and Android lifecycle.

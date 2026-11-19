@@ -1,6 +1,6 @@
 # Ghost WiFi Auditor M4 — QA and acceptance (v0.5.0-alpha)
 
-M4 source integrates a real SSH/SFTP client and Python agent. CI tests can validate code correctness but cannot prove a Wi-Fi monitor capture works until hardware and server are available.
+M4 source integrates a real SSH/SFTP client and Python agent. [GitHub Actions #44583206158](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44583206158) passed on source commit `8218dd2`: Python/Linux, C++, Android unit tests and R8 Debug build + APK artifact. The real SSH handshake, SFTP and Wi-Fi monitor capture remain **untested on physical equipment**.
 
 ## Automated checks
 
