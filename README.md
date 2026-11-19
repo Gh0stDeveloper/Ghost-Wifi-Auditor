@@ -9,7 +9,7 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 
 <p align="center">
   <a href="https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions"><img alt="Android CI" src="https://img.shields.io/github/actions/workflow/status/Gh0stDeveloper/Ghost-Wifi-Auditor/android.yml?label=Android%20CI&logo=githubactions"/></a>
-  <img alt="Development stage" src="https://img.shields.io/badge/estado-alpha%200.3.0-F0AD4E"/>
+  <img alt="Development stage" src="https://img.shields.io/badge/estado-alpha%200.4.0-F0AD4E"/>
   <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white"/>
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white"/>
   <a href="https://t.me/GhostDeve"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-Canal%20oficial-26A5E4?logo=telegram&logoColor=white"/></a>
@@ -17,6 +17,18 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 
 > [!IMPORTANT]
 > **Estado:** proyecto Android en fase **alpha / diagnóstico (M1)**. El código de la interfaz y las comprobaciones de hardware son una base de desarrollo. No se debe afirmar que la app ya permite capturar paquetes, activar modo monitor en cualquier teléfono, obtener contraseñas o instalar controladores automáticamente. Las funciones dependen del modelo, *kernel*, *firmware*, chipset y permisos.
+
+## Hito M3 — Capturas offline y análisis nativo (0.4.0-alpha)
+
+- **Android 15/16 — barras del sistema:** se aplica `safeDrawingPadding()` al `Scaffold` para evitar que encabezado y barra inferior queden debajo de la hora, batería o navegación del sistema.
+- **Equipos:** eliminado el formulario “Otro dispositivo no listado” que guardaba modelos manualmente. Se conserva la búsqueda de equipos documentados y el diagnóstico automático del dispositivo.
+- **Auditoría:** importación mediante Android Storage Access Framework, sin permisos de almacenamiento generales. PCAP y PCAPNG se copian a un área privada antes de analizarlos.
+- **Motor C++17/JNI:** valida cabeceras y registros PCAP, bloques SHB/IDB/EPB/PB/SPB de PCAPNG, tamaños, límites y enlaces. Cuenta paquetes Ethernet y categorías 802.11 de gestión, control y datos. No extrae claves ni publica identificadores MAC.
+- **Sesiones offline:** historial privado de hasta 20 archivos (máximo 128 MiB por archivo, 256 MiB en total), detalles, eliminación y exportación explícita de JSON de resumen y captura original mediante SAF.
+- **QA:** tests nativos con PCAP/PCAPNG sintéticos válidos y corruptos; se ejecutan antes de la compilación Android. Debug y release mantienen R8.
+- **Seguridad de hardware:** la pantalla deja explícito que la **captura en vivo no está implementada ni validada**. Aún no se inicia ninguna captura en interfaz interna, USB OTG o SSH sin un backend real y hardware compatible. Detectar USB/root no desbloquea falsamente el botón.
+
+**Prueba física pendiente:** revisar visualmente la corrección de insets en Xiaomi/Samsung/Honor y probar con capturas exportadas de un entorno autorizado. El modo monitor real y las sesiones en vivo siguen condicionados a hardware/controladores y a la fase de integración correspondiente.
 
 ## Hito M2 — USB OTG y hardware externo (0.3.0-alpha)
 
@@ -64,7 +76,7 @@ En **Settings → Secrets and variables → Actions** configura los cuatro secre
 - **Wi-Fi interno:** identifica las capacidades que anuncia el controlador; no fuerza funciones incompatibles.
 - **USB OTG:** enumera adaptadores, identifica **VID/PID** y permite planificar soporte de múltiples chipsets.
 - **Linux remoto:** modalidad proyectada para ejecutar herramientas desde un equipo Linux mediante conexión autenticada.
-- **PCAP/PCAPNG:** reconocimiento preliminar de cabeceras mediante C++/JNI; un analizador completo está en la hoja de ruta.
+- **PCAP/PCAPNG:** analizador nativo de bloques y categorías de trama, con historial y exportación de informes; no captura en vivo.
 - **Root:** verificación bajo demanda de superusuario, compatible con enfoques de root temporal o persistente sin conceder permisos automáticamente.
 
 ## Herramientas y tecnologías

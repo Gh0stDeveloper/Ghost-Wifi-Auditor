@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(ghostpcap LANGUAGES CXX)
-add_library(ghostpcap SHARED pcap_inspector.cpp)
+add_library(ghostpcap SHARED pcap_inspector.cpp pcap_core.cpp)
 target_compile_features(ghostpcap PRIVATE cxx_std_17)
+target_compile_options(ghostpcap PRIVATE -Wall -Wextra -Werror)

@@ -3,7 +3,7 @@
 **Project:** [Gh0stDeveloper/Ghost-Wifi-Auditor](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor)  
 **Owner / Developer:** Ghost Developer  
 **Working branch:** `main`  
-**Baseline:** `0.3.0-alpha` M2 USB diagnostics (2026-11-19; CI passed, physical OTG testing remains)  
+**Baseline:** `0.4.0-alpha` M3 PCAP analysis + UI insets correction (CI/hardware QA pending)  
 **Status (2026-11-19):** M1 v0.2 passed CI, and user confirmed root checks on a Redmi 14C. **M2 v0.3** CI [run #44563903907](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44563903907) passed unit tests, R8-minified Debug build, R8 mapping check and APK artifact upload (commit `5406aaa`). Persistent signing secrets were not configured; signed-release steps were skipped. Physical USB adapter QA is pending.
 
 > This document is a development plan, not a claim that planned functions already work. "Compiled" does not mean "tested on device." No unsupported driver or monitor capability is to be labeled as available.
@@ -56,11 +56,11 @@
 **Goal:** Real audit sessions where the hardware and permissions actually support capture.
 
 - [ ] Separate a clearly scoped session controller from UI; foreground-service and Android notification lifecycle.
-- [ ] Scope and authorization confirmation before any active operation; no unauthorised network intrusion.
+- [ ] Scope and authorization confirmation before any **live capture** operation; currently no live capture is offered.
 - [ ] Capture only with validated monitor-capable adapter/internal driver or an approved Linux backend.
 - [ ] Provide session start/stop, duration, channel, capture size, destination and clean cancellation.
-- [ ] Parse classic PCAP and PCAPNG block/record structures in C++/JNI with bounds checks, malformed-file handling and tests.
-- [ ] Store capture sessions locally, permit import/export and protect captured content from unintentional sharing.
+- [x] Parse classic PCAP and PCAPNG records/blocks via streaming C++/JNI, with bounds checks, truncated-file handling and standalone native tests.
+- [x] Store **imported offline** capture sessions privately; allow user-initiated import, report export, raw export and deletion. Live-capture sessions not implemented.
 
 **Acceptance:** captures from an explicitly authorised lab environment can be opened, verified, stopped and exported without crashing. Unsupported devices show a clear limitation, not a fake success.
 
@@ -144,3 +144,13 @@ Every release must include: **version/build, branch/commit, what changed (screen
 - [ ] **Persistent release signing:** no `GHOST_WIFI_*` signing secrets configured; release job correctly skipped artifact generation.
 - [ ] **Upgrade signature compatibility:** M1 and M2 Debug certificates differ, so direct app update is not possible. New APK must not be advertised as update-compatible until signed with the original project keystore.
 - [ ] Physical OTG adapter connected/disconnected, user-granted permission, power/driver check and unknown VID:PID manual tests.
+
+## M3 integration observations (2026-11-19)
+
+- [x] UI status-bar/navigation-bar fix: root `Scaffold` uses `safeDrawingPadding` and consumes insets.
+- [x] Removed **manually-added local phone** profile from Equipos; compatible model catalog remains read-only and versioned.
+- [x] Native streaming parser for PCAP and PCAPNG, packet categories, bounds and invalid-file errors.
+- [x] Private imported capture history and explicit JSON/raw export, with file limits.
+- [ ] Physical Android 16 testing for bars and import/history/export; tests in CI are not a substitute for device testing.
+- [ ] Live capturing from internal or OTG interfaces: requires validated chipset driver, session service and hardware. No fake capture state.
+- [ ] M4 Linux SSH backend and remote captured-file workflow.

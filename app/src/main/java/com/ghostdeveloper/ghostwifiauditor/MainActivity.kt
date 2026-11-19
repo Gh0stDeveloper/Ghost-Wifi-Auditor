@@ -91,6 +91,9 @@ private fun MainShell() {
     val symbols = listOf(Icons.Filled.Home, Icons.Filled.Radar, Icons.Filled.Devices,
         Icons.Filled.Settings)
     Scaffold(
+        // Android 15+ draws behind status/navigation bars; inset the full scaffold.
+        modifier = Modifier.fillMaxSize().safeDrawingPadding(),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = Bg,
         bottomBar = {
             NavigationBar(containerColor = Color(0xFF101317)) {
@@ -258,58 +261,148 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
 }
 
 @Composable private fun AuditScreen() {
-    val context=LocalContext.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var mode by rememberSaveable { mutableStateOf("Interno") }
-    var pcapResult by remember { mutableStateOf("No se ha seleccionado ningún archivo.") }
+    var captures by remember { mutableStateOf(CaptureRepository.list(context)) }
+    var busy by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf("Importa un archivo PCAP/PCAPNG para analizarlo sin conexión.") }
+    var selected by remember { mutableStateOf<CaptureEntry?>(null) }
+    var confirmDelete by remember { mutableStateOf<CaptureEntry?>(null) }
+    var exportEntry by remember { mutableStateOf<CaptureEntry?>(null) }
     val pickPcap=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if(uri!=null) {
-            pcapResult=runCatching {
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    run {
-                        val bytes = ByteArray(64)
-                        val read = input.read(bytes)
-                        NativePcap.inspectHeader(bytes.copyOf(read.coerceAtLeast(0)))
-                    }
-                } ?: "No se pudo abrir el archivo"
-            }.getOrElse { "Error al inspeccionar: ${it.javaClass.simpleName}" }
+        if(uri!=null && !busy) {
+            scope.launch {
+                busy = true
+                try {
+                    val entry = CaptureRepository.importCapture(context,uri)
+                    captures = CaptureRepository.list(context)
+                    selected = entry
+                    message = "Importación completa: ${entry.packets} registros examinados"
+                } catch (ex: Exception) {
+                    message = "Error al importar: ${ex.message ?: ex.javaClass.simpleName}"
+                } finally {
+                    busy = false
+                }
+            }
         }
+    }
+    val reportSaver=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        val item=exportEntry
+        if(uri!=null && item!=null) scope.launch {
+            try {
+                CaptureRepository.exportReport(context,item,uri)
+                message="Informe JSON guardado correctamente."
+            } catch(ex: Exception) { message="Error al exportar informe: ${ex.message}" }
+        }
+    }
+    val captureSaver=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        val item=exportEntry
+        if(uri!=null && item!=null) scope.launch {
+            try {
+                CaptureRepository.exportCapture(context,item,uri)
+                message="Captura original exportada."
+            } catch(ex: Exception) { message="Error al exportar captura: ${ex.message}" }
+        }
+    }
+    if(confirmDelete!=null) {
+        val item=confirmDelete!!
+        AlertDialog(
+            onDismissRequest={confirmDelete=null},
+            title={Text("Eliminar captura")},
+            text={Text("Se eliminará el archivo importado y su historial local: ${item.displayName}.")},
+            confirmButton={
+                TextButton(onClick={
+                    val removed=CaptureRepository.delete(context,item.id)
+                    captures=CaptureRepository.list(context)
+                    if(selected?.id==item.id) selected=null
+                    message=if(removed) "Captura eliminada." else "No se pudo eliminar el archivo."
+                    confirmDelete=null
+                }) { Text("Eliminar",color=Amber) }
+            },
+            dismissButton={TextButton(onClick={confirmDelete=null}) { Text("Cancelar") }}
+        )
     }
     Column(verticalArrangement=Arrangement.spacedBy(13.dp)) {
         H1("Centro de auditoría")
-        Small("Selecciona el motor de diagnóstico para tus redes autorizadas.")
+        Small("M3 · Análisis offline de tramas y gestión de capturas autorizadas.")
         Panel {
-            H2("Método")
+            H2("Motor de captura")
             listOf("Interno","USB OTG","Linux remoto").forEach { option ->
-                Row(verticalAlignment=Alignment.CenterVertically, modifier=Modifier.fillMaxWidth()
-                    .clickable{mode=option}) {
+                Row(verticalAlignment=Alignment.CenterVertically,modifier=Modifier.fillMaxWidth()
+                    .clickable { mode=option }) {
                     RadioButton(selected=mode==option,onClick={mode=option})
                     Text(option)
                 }
             }
             HorizontalDivider(color=Color.DarkGray)
-            when(mode) {
-                "Interno" -> Small("Se comprobará si el controlador del teléfono anuncia monitor. Root no garantiza compatibilidad.")
-                "USB OTG" -> Small("La app puede enumerar USB; cargar un driver Wi-Fi requiere soporte del kernel.")
-                else -> Small("Agente Linux y SSH todavía pendientes de implementar. Sin credenciales guardadas.")
-            }
+            Small(when(mode) {
+                "Interno" -> "Wi-Fi integrado: exige una interfaz monitor operativa y validada. Root por sí solo no basta."
+                "USB OTG" -> "Un dispositivo USB detectado no implica que el kernel tenga un driver de captura compatible."
+                else -> "SSH y agente Linux no están implementados todavía (plan M4)."
+            })
+            StatusRow(Icons.Filled.RadioButtonUnchecked,"Captura en vivo","Sin backend validado",Amber)
+            Small("El inicio de captura permanecerá deshabilitado hasta implementar y probar un motor real para el hardware. No se simulan resultados.")
         }
         Panel {
-            H2("Herramientas disponibles")
-            StatusRow(Icons.Filled.Usb,"Enumeración de dispositivos USB","Disponible",Green)
-            StatusRow(Icons.Filled.Shield,"Diagnóstico Root","Disponible",Green)
-            StatusRow(Icons.Filled.InsertDriveFile,"Reconocimiento PCAP/PCAPNG","Disponible",Green)
-            StatusRow(Icons.Filled.Radar,"Captura Wi-Fi 802.11","Próximo hito",Amber)
-            StatusRow(Icons.Filled.Terminal,"Control SSH remoto","Próximo hito",Amber)
-        }
-        Panel {
-            H2("Inspección nativa C++")
-            Small("Selecciona un archivo PCAP o PCAPNG. La app reconoce únicamente la cabecera; no extrae credenciales ni analiza todavía los paquetes.")
-            OutlinedButton(onClick={pickPcap.launch(arrayOf("*/*"))}, modifier=Modifier.fillMaxWidth()) {
+            H2("Importación y análisis C++")
+            Small("PCAP y PCAPNG: valida bloques, límites y registros; clasifica tramas 802.11 en gestión, control y datos. No extrae contraseñas.")
+            OutlinedButton(
+                onClick={pickPcap.launch(arrayOf("*/*"))},
+                enabled=!busy,modifier=Modifier.fillMaxWidth()
+            ) {
                 Icon(Icons.Filled.FolderOpen,null)
                 Spacer(Modifier.width(8.dp))
-                Text("Importar captura")
+                Text(if(busy) "Analizando…" else "Importar PCAP / PCAPNG")
             }
-            Small(pcapResult,color=Color.White)
+            Small("Tamaño máximo: 128 MiB por captura y 256 MiB de historial local. Los archivos quedan privados.")
+            Small(message,if(message.startsWith("Error")) Amber else Green)
+        }
+        Panel {
+            H2("Historial de capturas")
+            if(captures.isEmpty()) Small("Sin capturas importadas.")
+            captures.forEach { entry ->
+                val active=selected?.id==entry.id
+                Column(Modifier.fillMaxWidth().border(1.dp,
+                    if(active) Green else Color(0xFF34383A),RoundedCornerShape(12.dp))
+                    .clickable { selected=entry }.padding(11.dp),
+                    verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                    Text(entry.displayName,fontWeight=FontWeight.Medium,fontSize=13.sp,
+                        maxLines=2,overflow=TextOverflow.Ellipsis)
+                    Small("${entry.format} · ${entry.packets} paquetes · ${entry.bytes} bytes",
+                        if(active) Green else Muted)
+                    Small(java.text.DateFormat.getDateTimeInstance().format(java.util.Date(entry.importedAt)))
+                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick={selected=entry}) { Text("Detalles",color=Blue) }
+                        TextButton(onClick={confirmDelete=entry}) { Text("Eliminar",color=Amber) }
+                    }
+                }
+            }
+        }
+        selected?.let { entry ->
+            Panel {
+                H2("Resultados de análisis")
+                StatusRow(Icons.Filled.InsertDriveFile,"Formato",entry.format,Green)
+                StatusRow(Icons.Filled.List,"Paquetes",entry.packets.toString(),Green)
+                StatusRow(Icons.Filled.Settings,"Tramas de gestión",entry.summary.optLong("management").toString())
+                StatusRow(Icons.Filled.Settings,"Tramas de control",entry.summary.optLong("control").toString())
+                StatusRow(Icons.Filled.Settings,"Tramas de datos",entry.summary.optLong("data").toString())
+                StatusRow(Icons.Filled.Settings,"Ethernet",entry.summary.optLong("ethernet").toString())
+                StatusRow(Icons.Filled.Settings,"Otros enlaces",entry.summary.optLong("other").toString())
+                val links=entry.summary.optJSONArray("linkTypes")
+                val linkLabels=links?.let { l -> (0 until l.length()).joinToString(", ") { l.optInt(it).toString() } }
+                Small("Tipos de enlace: ${linkLabels?.ifBlank { "no presentes" } ?: "desconocidos"}")
+                Small("Los resultados representan categorías de trama, no vulnerabilidades ni credenciales.")
+                OutlinedButton(modifier=Modifier.fillMaxWidth(),onClick={
+                    exportEntry=entry
+                    reportSaver.launch("ghost-wifi-report-${entry.id.take(8)}.json")
+                }) { Text("Exportar informe JSON") }
+                OutlinedButton(modifier=Modifier.fillMaxWidth(),onClick={
+                    exportEntry=entry
+                    val suffix=if(entry.format=="PCAPNG") "pcapng" else "pcap"
+                    captureSaver.launch("ghost-wifi-${entry.id.take(8)}.$suffix")
+                }) { Text("Exportar captura original") }
+            }
         }
     }
 }
@@ -318,10 +411,7 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val catalog = remember { DeviceCatalog.load(ctx) }
-    val local = remember { ctx.getSharedPreferences("ghost_wifi_local_devices",android.content.Context.MODE_PRIVATE) }
     var search by rememberSaveable { mutableStateOf("") }
-    var customName by remember { mutableStateOf(local.getString("custom_name", "") ?: "") }
-    var customNotes by remember { mutableStateOf(local.getString("custom_notes", "") ?: "") }
     var profile by remember { mutableStateOf<DeviceFingerprint?>(null) }
     var scanning by remember { mutableStateOf(false) }
     val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
@@ -376,20 +466,6 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
                     }
                 }
             }
-        Panel {
-            H2("Otro dispositivo no listado")
-            Small("Puedes guardar una nota local. No la convierte en compatibilidad verificada.")
-            OutlinedTextField(value=customName,onValueChange={customName=it.take(100)},
-                label={Text("Marca / modelo")}, modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(value=customNotes,onValueChange={customNotes=it.take(400)},
-                label={Text("Kernel, firmware y observaciones")},modifier=Modifier.fillMaxWidth(),
-                minLines=2,maxLines=4)
-            OutlinedButton(onClick={
-                local.edit().putString("custom_name",customName)
-                    .putString("custom_notes",customNotes).apply()
-            },enabled=customName.isNotBlank()) { Text("Guardar perfil local · Sin verificar") }
-            Small("Si el controlador no admite monitor, se sugerirá un adaptador compatible o un equipo Linux.")
-        }
         UsbAdapterPanel()
     }
 }
@@ -605,7 +681,7 @@ private fun openExternalLink(ctx: android.content.Context, url: String) {
             Spacer(Modifier.width(12.dp))
             Column {
                 H1("Ghost WiFi Auditor")
-                Small("Versión 0.2.0-alpha · Hito M1")
+                Small("Versión 0.4.0-alpha · Hito M3")
                 Small("Dragón original · AMOLED grafito",Green)
             }
         }
