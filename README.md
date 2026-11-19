@@ -28,6 +28,8 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 - Perfil de «otro dispositivo» guardado únicamente en preferencias locales.
 - Pruebas unitarias del parser de root/monitor con JUnit, integradas en GitHub Actions.
 
+**CI verificada:** las pruebas unitarias y `assembleDebug` finalizaron correctamente en [GitHub Actions #44558588666](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44558588666) (commit `539ffe2`). El artefacto `ghost-wifi-debug` es Debug, **no** una release con firma permanente. 
+
 **Pendiente de validación:** instalación de la APK en teléfonos reales y pruebas de las diferencias entre controladores/firmware. El soporte funcional de modo monitor, USB Wi-Fi y Linux remoto sigue pendiente.
 
 ## Vista general

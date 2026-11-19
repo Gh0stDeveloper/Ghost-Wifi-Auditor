@@ -4,7 +4,7 @@
 **Owner / Developer:** Ghost Developer  
 **Working branch:** `main`  
 **Baseline:** `0.2.0-alpha` M1 implementation (2026-11-19; CI/device QA still required)  
-**Status:** Previous v0.1 Debug build passed CI; v0.2 Debug/Unit CI must be checked after merge. Real-hardware acceptance testing pending.
+**Status (2026-11-19):** M1 v0.2 source committed; GitHub Actions [run #44558588666](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44558588666) passed **unit tests**, **assembleDebug** and artifact upload for code commit `539ffe2`. No real-device QA or signed-release build has been performed yet.
 
 > This document is a development plan, not a claim that planned functions already work. "Compiled" does not mean "tested on device." No unsupported driver or monitor capability is to be labeled as available.
 
@@ -20,7 +20,7 @@
 - [x] Links to official Telegram channels and the GitHub source from About.
 - [x] R8 configuration and optional release signing environment-variable support.
 - [x] GitHub Actions `assembleDebug` success and uploaded `ghost-wifi-debug` artifact, run [44498823633](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44498823633).
-- [ ] Install and run the Debug APK on real test devices.
+- [ ] Install and run the M1 Debug APK from [run #44558588666](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44558588666) on real test devices.
 - [ ] Run the signed **release** pipeline using configured repository secrets and validate signature continuity.
 - [ ] Add automated test coverage; no `src/test` or `src/androidTest` test suite is present at this baseline.
 
