@@ -1,0 +1,57 @@
+name: Ghost WiFi Auditor — Android QA
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.9' }
+      - name: Build debug APK
+        run: gradle --no-daemon assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghost-wifi-debug
+          path: app/build/outputs/apk/debug/*.apk
+
+  signed-release:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    env:
+      GHOST_WIFI_STORE_PASSWORD: ${{ secrets.GHOST_WIFI_STORE_PASSWORD }}
+      GHOST_WIFI_KEY_ALIAS: ${{ secrets.GHOST_WIFI_KEY_ALIAS }}
+      GHOST_WIFI_KEY_PASSWORD: ${{ secrets.GHOST_WIFI_KEY_PASSWORD }}
+      ENCODED_KEYSTORE: ${{ secrets.GHOST_WIFI_KEYSTORE_B64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.9' }
+      - name: Prepare private keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ENCODED_KEYSTORE"
+          test -n "$GHOST_WIFI_STORE_PASSWORD"
+          test -n "$GHOST_WIFI_KEY_ALIAS"
+          test -n "$GHOST_WIFI_KEY_PASSWORD"
+          printf '%s' "$ENCODED_KEYSTORE" | base64 -d > "$RUNNER_TEMP/ghostwifi-release.p12"
+          chmod 600 "$RUNNER_TEMP/ghostwifi-release.p12"
+          echo "GHOST_WIFI_STORE_FILE=$RUNNER_TEMP/ghostwifi-release.p12" >> "$GITHUB_ENV"
+      - name: Build signed release APK (R8)
+        run: gradle --no-daemon assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghost-wifi-signed-release
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 7
