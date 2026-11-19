@@ -893,9 +893,24 @@ private fun openExternalLink(ctx: android.content.Context, url: String) {
             Spacer(Modifier.width(12.dp))
             Column {
                 H1("Ghost WiFi Auditor")
-                Small(tr("Versión 0.6.0-alpha · Hito M5","Version 0.6.0-alpha · Milestone M5"))
+                Small(tr("Versión 0.7.0-alpha · Hito M6","Version 0.7.0-alpha · Milestone M6"))
                 Small("Dragón original · AMOLED grafito",Green)
             }
+        }
+        Panel {
+            H2(tr("Identidad de la aplicación","Application signing identity"))
+            Small(tr("Certificado SHA-256 instalado:","Installed certificate SHA-256:"))
+            val signer=remember(ctx) { ApkIdentity.certificateSha256(ctx) }
+            Text(signer,fontSize=11.sp,color=Green,lineHeight=16.sp)
+            val debug=remember(ctx) { ApkIdentity.isDebuggable(ctx) }
+            Small(if(debug)
+                tr("Compilación Debug. El certificado puede cambiar entre ejecuciones de CI.",
+                   "Debug build. The certificate may change across CI runs.")
+            else tr("Compilación no depurable. Comprueba que el certificado coincida con versiones anteriores.",
+                   "Non-debuggable build. Compare the signer with earlier releases."),
+                if(debug) Amber else Green)
+            Small(tr("El certificado público no contiene contraseñas ni claves privadas.",
+                "This public certificate fingerprint contains no passwords or private keys."))
         }
         Panel {
             H2(tr("Créditos","Credits"))

@@ -29,7 +29,16 @@ object HardwareInspector {
             }
             ShellResult(
                 if (completed) process.exitValue() else -1,
-                output.inputStream().bufferedReader().use { it.readText().take(20000) },
+                output.inputStream().bufferedReader().use { reader ->
+                    val collected=StringBuilder()
+                    val buffer=CharArray(2048)
+                    while (collected.length < 20000) {
+                        val n=reader.read(buffer,0,minOf(buffer.size,20000-collected.length))
+                        if(n <= 0) break
+                        collected.append(buffer,0,n)
+                    }
+                    collected.toString()
+                },
                 !completed
             )
         } catch (e: Exception) {

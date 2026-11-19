@@ -18,9 +18,10 @@ android {
     defaultConfig {
         applicationId = "com.ghostdeveloper.ghostwifiauditor"
         minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.6.0-alpha"
+        versionCode = 7
+        versionName = "0.7.0-alpha"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
         externalNativeBuild { cmake { cppFlags += "-std=c++17" } }
     }
@@ -77,5 +78,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2025.01.01"))
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

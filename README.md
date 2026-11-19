@@ -9,18 +9,33 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 
 <p align="center">
   <a href="https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions"><img alt="Android CI" src="https://img.shields.io/github/actions/workflow/status/Gh0stDeveloper/Ghost-Wifi-Auditor/android.yml?label=Android%20CI&logo=githubactions"/></a>
-  <img alt="Development stage" src="https://img.shields.io/badge/estado-alpha%200.6.0-F0AD4E"/>
+  <img alt="Development stage" src="https://img.shields.io/badge/estado-alpha%200.7.0-F0AD4E"/>
   <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white"/>
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white"/>
   <a href="https://t.me/GhostDeve"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-Canal%20oficial-26A5E4?logo=telegram&logoColor=white"/></a>
 </p>
 
 > [!IMPORTANT]
-> **Estado:** proyecto Android en fase **alpha (M5)**. El código de la interfaz y las comprobaciones de hardware son una base de desarrollo. No se debe afirmar que la app ya permite capturar paquetes, activar modo monitor en cualquier teléfono, obtener contraseñas o instalar controladores automáticamente. Las funciones dependen del modelo, *kernel*, *firmware*, chipset y permisos.
+> **Estado:** proyecto Android en fase **alpha (M6)**. El código de la interfaz y las comprobaciones de hardware son una base de desarrollo. No se debe afirmar que la app ya permite capturar paquetes, activar modo monitor en cualquier teléfono, obtener contraseñas o instalar controladores automáticamente. Las funciones dependen del modelo, *kernel*, *firmware*, chipset y permisos.
 
 **Estado de CI M4 (2026-11-19):** [GitHub Actions #44583206158](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44583206158) compiló `0.5.0-alpha` (commit `8218dd2`) y aprobó pruebas Python/Linux, pruebas nativas C++ y pruebas unitarias Android. `assembleDebug` con R8, `mapping.txt` y publicación del artefacto `ghost-wifi-debug` correctos. Se corrigió el empaquetado duplicado de metadatos Bouncy Castle en Android. **La release con firma persistente no se generó** porque todavía faltan `GHOST_WIFI_*` GitHub Secrets. El cliente SSH y el motor de captura remoto **no están validados en hardware real**.
 
 **Resultado confirmado de M5 (19 de noviembre de 2026):** [GitHub Actions #44587539143](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44587539143) aprobó las pruebas Python/Linux, pruebas nativas C++, pruebas unitarias Android, `assembleDebug` con R8 y comprobación del archivo `mapping.txt`. APK `ghost-wifi-debug` generada desde el commit `72a5674`. Una compilación anterior falló por un ícono no disponible (`ImageOff`); se sustituyó por un ícono compatible. **No se produjo release firmada permanentemente**, porque faltan las credenciales privadas de firma en GitHub Secrets. La exportación PDF, el nuevo historial y los temas aún requieren pruebas visuales en dispositivo físico.
+
+## Hito M6 — Seguridad, QA y preparación de release (0.7.0-alpha)
+
+La nueva fase introduce una **política SSH/SFTP comprobable**, validación de parámetros de captura, tamaños de respuesta acotados, limpieza remota también en caso de error y controles para que el modo sin conexión se respete en la capa de red.
+
+El proceso CI agrega pruebas de entradas PCAP malformadas, sanitizador nativo, análisis estático de seguridad, Android Lint, compilación de pruebas instrumentadas, R8, verificación de firma de APK y archivos de checksum SHA-256. La pantalla **About** expone la **huella del certificado instalado** para diagnosticar conflictos entre versiones.
+
+Documentación:
+
+- [Seguridad y superficies de ataque](docs/SECURITY-MODEL.md)
+- [Firma permanente y continuidad de actualizaciones](docs/RELEASE-SIGNING.md)
+- [Matriz y plan QA de M6](docs/QA-M6.md)
+- [Roadmap M7–M9](docs/ROADMAP.md)
+
+**Límites:** root temporal, USB OTG detectado y un controlador que anuncie monitor no garantizan captura real. La compatibilidad de hardware no estará certificada sin pruebas físicas. La aplicación no obtiene ni almacena automáticamente contraseñas Wi-Fi de una captura.
 
 ## Hito M5 — Informes, historial, idiomas y personalización (0.6.0-alpha)
 

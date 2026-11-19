@@ -1,5 +1,6 @@
 #include "../../main/cpp/pcap_core.h"
 #include <cassert>
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -64,6 +65,35 @@ int main() {
     const auto unknown=write({0,1,2,3},"unknown.bin");
     s=ghost::inspectCapture(unknown.string());
     assert(!s.ok && s.packets==0);
+    // Reject truncated headers and block boundaries without reading out of bounds.
+    for (std::size_t length=0; length < 24; ++length) {
+        const auto partial=write(Bytes(classic.begin(),
+            classic.begin()+std::min(length,classic.size())), "partial.pcap");
+        const auto check=ghost::inspectCapture(partial.string());
+        assert(!check.ok);
+        std::filesystem::remove(partial);
+    }
+    // Deterministic malformed-input corpus; must never crash, hang or read OOB.
+    std::uint32_t state = 0x31415926u;
+    for(int i=0;i<128;++i) {
+        Bytes fuzz;
+        fuzz.reserve(64);
+        for(int j=0;j<64;++j) {
+            state = state * 1664525u + 1013904223u;
+            fuzz.push_back(static_cast<std::uint8_t>(state >> 24));
+        }
+        // Include a valid magic prefix in half the cases, to reach deeper parser paths.
+        if((i & 1)==0) {
+            fuzz[0]=0x0a;fuzz[1]=0x0d;fuzz[2]=0x0d;fuzz[3]=0x0a;
+        } else {
+            fuzz[0]=0xd4;fuzz[1]=0xc3;fuzz[2]=0xb2;fuzz[3]=0xa1;
+        }
+        const auto candidate=write(fuzz,"random.cap");
+        const auto check=ghost::inspectCapture(candidate.string());
+        assert(check.fileBytes==fuzz.size());
+        std::filesystem::remove(candidate);
+    }
+
     for (auto& p: {a,b,invalid,truncated,unknown}) std::filesystem::remove(p);
     std::cout << "Native PCAP/PCAPNG parser tests passed" << std::endl;
 }

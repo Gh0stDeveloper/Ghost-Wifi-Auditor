@@ -3,7 +3,7 @@
 **Project:** [Gh0stDeveloper/Ghost-Wifi-Auditor](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor)  
 **Owner / Developer:** Ghost Developer  
 **Working branch:** `main`  
-**Baseline:** `0.6.0-alpha` M5 reports, history and customization (automated CI passed, physical QA pending)  
+**Baseline:** `0.7.0-alpha` M6 security and QA hardening (automated CI pending, physical QA deferred)  
 **Status (2026-11-19):** M1 v0.2 passed CI, and user confirmed root checks on a Redmi 14C. **M2 v0.3** CI [run #44563903907](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44563903907) passed unit tests, R8-minified Debug build, R8 mapping check and APK artifact upload (commit `5406aaa`). Persistent signing secrets were not configured; signed-release steps were skipped. Physical USB adapter QA is pending.
 
 > This document is a development plan, not a claim that planned functions already work. "Compiled" does not mean "tested on device." No unsupported driver or monitor capability is to be labeled as available.
@@ -89,18 +89,55 @@
 
 **Acceptance:** results reproduce consistently from a saved session, export cleanly and remain understandable offline.
 
-## M6 — Security hardening, QA and signed release
+## M6 — Security hardening and release preparation (0.7.0-alpha)
 
-- [ ] Unit tests for shell parsing, USB chipset mapping and PCAP/PCAPNG.
-- [ ] Compose UI tests and instrumentation on Xiaomi Redmi 14C, Samsung, Honor and additional Android hardware.
-- [ ] Validate USB attach/detach, root revoke/reboot, airplane mode, sleep/background and battery-optimization behavior.
-- [ ] Review root subprocess isolation, argument handling, file input validation, privacy/security and secure storage.
-- [ ] CI: static checks, unit tests, debug build, signed release, artifact retention and checksums.
-- [ ] Reuse the **Ghost WiFi Auditor-specific** persistent keystore via private GitHub Secrets. Never commit the keystore, passwords or signing credentials; validate signing identity after updates.
-- [ ] Release notes, user documentation, troubleshooting and version migration checks.
-- [ ] Verify supported scenarios on real devices before claiming stable `1.0.0`.
+**Goal:** reduce security defects and establish repeatable verification. The app is **not** called stable until manual device tests and signing continuity pass.
 
-**Acceptance for 1.0.0:** Every advertised operation works in at least one documented hardware configuration, runs have predictable error handling, the APK is persistently signed, CI is green and real-device QA is recorded. Hardware-dependent features stay unavailable where unsupported.
+- [x] Dedicated input policy and JUnit tests for SSH identity, interface, capture duration, remote ID, path and size.
+- [x] Limit SSH output and local diagnostic reads, require offline-only enforcement in network layer and clean up the remote PCAP on failures.
+- [x] Add signature certificate SHA-256 to About, without exposing keystores.
+- [x] Add Android instrumentation smoke-test source (compilation in CI; execution on real hardware/emulator later).
+- [x] Add native parser malformed-input corpus and undefined-behavior sanitizer job.
+- [x] Add static security regression checks, Android Lint, R8 artifact SHA256SUMS, APK signer verification and optional signer certificate pinning.
+- [x] Document threat model, signing process, hardware test matrix and release criteria.
+- [ ] Validate on Redmi 14C, Samsung, Honor and other Android hardware.
+- [ ] Verify Linux SSH, SFTP and real monitor interface with owned compatible equipment.
+- [ ] Configure **Ghost WiFi Auditor's original** persistent keystore in GitHub Actions Secrets; test update-compatible signed APK.
+- [ ] Accessibility, offline lifecycle, visual review, screenshots and final third-party license audit.
+
+**M6 result:** a stronger alpha build, **not** a certified Wi-Fi audit engine nor release 1.0.
+
+## M7 — Operational wireless capture backends
+
+**Goal:** perform **real, explicitly authorized captures**, never simulated results.
+
+- [ ] Linux/USB capture backend capability negotiation and preflight reports (driver, firmware, interface, permissions).
+- [ ] Controlled session lifecycle: start/stop, timing, progress, cancellation, storage limits and cleanup.
+- [ ] Implement validated Android internal/USB capture only on specific supported kernel/chipset combinations, with safe fallback to remote Linux.
+- [ ] Detect lack of monitor mode and explain the hardware dependency; root alone is insufficient.
+- [ ] QA using actual monitor-capable hardware and named driver/firmware versions.
+
+## M8 — Structured wireless security assessment
+
+**Goal:** Wifite-style **guided analysis UI**, grounded in real evidence rather than automatic password retrieval.
+
+- [ ] Parse network beacon/probe frames and security capabilities from authorized captures: SSID/BSSID, bands, channel, RSN/WPA2/WPA3 and WPS advertisement where observable.
+- [ ] Assess configuration risks (legacy protections, WPS exposure, outdated encryption) without equating them to exploitable weaknesses.
+- [ ] Identify the **presence and completeness** of relevant authentication exchanges when captured, without extracting passwords or claiming successful credential compromise.
+- [ ] Guided scope selection and human-readable reports with conservative evidence and privacy controls.
+- [ ] Compare results against known-good configuration policies for the operator's own network.
+
+## M9 — Hardware interoperability and production release
+
+**Goal:** verifiable 1.0 release for **documented supported hardware**, not universal Android compatibility.
+
+- [ ] End-to-end Xiaomi Redmi 14C, Samsung, Honor, Linux and USB adapter test matrix; regression/performance/thermal testing.
+- [ ] Full Spanish/English localization audit, accessibility, user guidance and errors.
+- [ ] Configure and verify original project signing key with stable SHA-256 certificate, signed release APK and upgrade migration.
+- [ ] Sign-off on packet privacy, dependencies, licensing, crash recovery, build reproducibility and threat model.
+- [ ] Publish 1.0 only for backend/hardware configurations validated by evidence.
+
+**After M6: 3 proposed milestones remain (M7–M9).** Full feature parity with Wifite2's attack automation is **not** included in the stable-scope promise; that requires a separate design, safety review and hardware-specific testing.
 
 ## High-priority product recommendations
 

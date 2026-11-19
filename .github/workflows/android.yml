@@ -32,22 +32,61 @@ jobs:
           else
             echo "QA uses ephemeral Android debug signing. It cannot update prior APKs signed by a different key." >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Static security regression checks
+        run: python3 scripts/security_regression_check.py
       - name: Linux agent unit tests
         run: python3 -m unittest discover -s linux/tests -v
       - name: Native PCAP/PCAPNG parser tests
         run: |
           g++ -std=c++17 -O2 -Wall -Wextra -Werror app/src/main/cpp/pcap_core.cpp app/src/test/cpp/pcap_core_test.cpp -o "$RUNNER_TEMP/ghost-pcap-tests"
           "$RUNNER_TEMP/ghost-pcap-tests"
+      - name: Native PCAP parser memory-safety tests (UBSan)
+        run: |
+          g++ -std=c++17 -O1 -g -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all \
+            app/src/main/cpp/pcap_core.cpp app/src/test/cpp/pcap_core_test.cpp \
+            -o "$RUNNER_TEMP/ghost-pcap-ubsan-tests"
+          "$RUNNER_TEMP/ghost-pcap-ubsan-tests"
+      - name: Android lint (static analysis)
+        run: gradle --no-daemon lintDebug
+      - name: Compile Android UI instrumentation tests
+        run: gradle --no-daemon assembleDebugAndroidTest
       - name: Unit tests for compatibility parsing
         run: gradle --no-daemon testDebugUnitTest
       - name: Build R8-minified debug APK
         run: gradle --no-daemon assembleDebug
       - name: Verify debug R8 mapping
         run: test -s app/build/outputs/mapping/debug/mapping.txt
+      - name: Verify Debug APK signing and SHA-256
+        shell: bash
+        env:
+          EXPECTED_CERT_SHA256: ${{ vars.GHOST_WIFI_EXPECTED_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          APK=$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)
+          test -n "$APK"
+          SIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner -print | sort -V | tail -1)
+          test -x "$SIGNER"
+          "$SIGNER" verify --print-certs "$APK" | tee "$RUNNER_TEMP/ghost-debug-signer.txt"
+          ACTUAL=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/ghost-debug-signer.txt" | head -1)
+          test -n "$ACTUAL"
+          if [[ -n "$EXPECTED_CERT_SHA256" && -n "${GHOST_WIFI_STORE_FILE:-}" ]]; then
+            test "${ACTUAL,,}" = "${EXPECTED_CERT_SHA256,,}" || {
+              echo "::error::Debug certificate fingerprint differs from the approved persistent key"
+              exit 1
+            }
+          fi
+          (cd app/build/outputs/apk/debug && sha256sum ./*.apk > SHA256SUMS.txt)
+          echo "Debug certificate SHA256: $ACTUAL" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -z "${GHOST_WIFI_STORE_FILE:-}" ]]; then
+            echo "WARNING: ephemeral runner debug signer. Not update-compatible with previous APKs." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: ghost-wifi-debug
-          path: app/build/outputs/apk/debug/*.apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/debug/SHA256SUMS.txt
+          retention-days: 14
 
   signed-release:
     if: github.event_name != 'pull_request'
@@ -88,6 +127,8 @@ jobs:
       - name: Validate R8 and release signature
         if: steps.signing.outputs.ready == 'true'
         shell: bash
+        env:
+          EXPECTED_CERT_SHA256: ${{ vars.GHOST_WIFI_EXPECTED_CERT_SHA256 }}
         run: |
           set -euo pipefail
           test -s app/build/outputs/mapping/release/mapping.txt
@@ -95,11 +136,22 @@ jobs:
           test -n "$APK"
           SIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f -print -quit)
           test -n "$SIGNER"
-          "$SIGNER" verify --print-certs "$APK"
-          sha256sum "$APK"
+          "$SIGNER" verify --print-certs "$APK" | tee "$RUNNER_TEMP/ghost-release-signer.txt"
+          ACTUAL=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/ghost-release-signer.txt" | head -1)
+          test -n "$ACTUAL"
+          if [[ -n "$EXPECTED_CERT_SHA256" ]]; then
+            test "${ACTUAL,,}" = "${EXPECTED_CERT_SHA256,,}" || {
+              echo "::error::Release signer differs from the approved certificate"
+              exit 1
+            }
+          fi
+          (cd app/build/outputs/apk/release && sha256sum ./*.apk > SHA256SUMS.txt)
+          echo "Release certificate SHA256: $ACTUAL" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: steps.signing.outputs.ready == 'true'
         with:
           name: ghost-wifi-signed-release
-          path: app/build/outputs/apk/release/*.apk
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/release/SHA256SUMS.txt
           retention-days: 14

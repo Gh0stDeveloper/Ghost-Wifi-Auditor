@@ -38,30 +38,18 @@ data class RemoteInterface(val name: String, val mode: String) {
 }
 
 object RemoteLinuxClient {
-    private const val AGENT = "/usr/local/bin/ghost-wifi-agent"
-    private val ifacePattern = Regex("^[a-zA-Z0-9_.:-]{1,15}$")
-    private val userPattern = Regex("^[a-z_][a-z0-9_.-]{0,31}$")
-    private val hostPattern = Regex("^[A-Za-z0-9._:-]{1,253}$")
-    private val idPattern = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
-
     internal fun verifyConfig(cfg: RemoteLinuxConfig) {
-        require(hostPattern.matches(cfg.host) && !cfg.host.startsWith("-")) { "Host/IP no válido" }
-        require(cfg.port in 1..65535) { "Puerto fuera de rango" }
-        require(userPattern.matches(cfg.username)) { "Usuario Linux no válido" }
-        val fields = cfg.knownHostLine.trim().split(Regex("\\s+"))
-        val expected = if (cfg.port == 22) cfg.host else "[${cfg.host}]:${cfg.port}"
-        require(fields.size in 3..4 && fields[0] == expected &&
-            fields[1] in setOf("ssh-ed25519", "ecdsa-sha2-nistp256", "rsa-sha2-512", "rsa-sha2-256", "ssh-rsa") &&
-            fields[2].matches(Regex("^[A-Za-z0-9+/=]{40,4096}$"))) {
-            "Pega la línea known_hosts del host y puerto exactos, verificada por otra vía"
-        }
-        require(cfg.password.isNotEmpty() || cfg.keyUri != null) {
-            "Introduce contraseña o selecciona una clave SSH"
-        }
+        RemoteCommandPolicy.validateConnection(
+            cfg.host, cfg.port, cfg.username, cfg.knownHostLine,
+            cfg.password.isNotEmpty() || cfg.keyUri != null
+        )
     }
 
     private fun open(context: Context, cfg: RemoteLinuxConfig): SSHClient {
         verifyConfig(cfg)
+        if (AppPreferences.load(context).offlineOnly) {
+            throw IOException("El modo sin conexión está activado en Ajustes")
+        }
         val ssh = SSHClient()
         ssh.connectTimeout = 12000
         ssh.timeout = 20000
@@ -77,8 +65,15 @@ object RemoteLinuxClient {
                     ?: throw IOException("No se pudo abrir la clave privada")
                 source.use { input ->
                     key.outputStream().use { output ->
-                        val copied = input.copyTo(output, 4096)
-                        if (copied > 128 * 1024) throw IOException("Clave SSH demasiado grande")
+                        val bytes=ByteArray(4096)
+                        var copied=0L
+                        while (true) {
+                            val read=input.read(bytes)
+                            if(read == -1) break
+                            copied+=read
+                            if(copied > 128L * 1024L) throw IOException("Clave SSH demasiado grande")
+                            output.write(bytes,0,read)
+                        }
                     }
                 }
                 ssh.authPublickey(cfg.username,
@@ -107,7 +102,19 @@ object RemoteLinuxClient {
                 throw IOException("Tiempo de respuesta del agente agotado")
             }
             // Agent emits bounded, one-line JSON. Do not expose arbitrary remote shell.
-            val raw = process.inputStream.bufferedReader().use { it.readText().take(32768) }
+            val raw = process.inputStream.bufferedReader().use { input ->
+                val result=StringBuilder()
+                val buffer=CharArray(4096)
+                while (true) {
+                    val count=input.read(buffer)
+                    if(count < 0) break
+                    if(result.length + count > 32768) {
+                        throw IOException("Respuesta del agente demasiado grande")
+                    }
+                    result.append(buffer,0,count)
+                }
+                result.toString()
+            }
             if (process.exitStatus != 0) {
                 throw IOException("Error remoto: ${raw.take(300)}")
             }
@@ -122,7 +129,7 @@ object RemoteLinuxClient {
     suspend fun diagnose(context: Context, cfg: RemoteLinuxConfig): RemoteLinuxStatus =
         withContext(Dispatchers.IO) {
             open(context, cfg).use { ssh ->
-                val data = execute(ssh, "$AGENT list", 15)
+                val data = execute(ssh, "${RemoteCommandPolicy.AGENT_PATH} list", 15)
                 val arr = data.getJSONArray("interfaces")
                 val interfaces = (0 until arr.length()).map { idx ->
                     val item = arr.getJSONObject(idx)
@@ -146,35 +153,32 @@ object RemoteLinuxClient {
     suspend fun capture(
         context: Context, cfg: RemoteLinuxConfig, iface: String, seconds: Int
     ): CaptureEntry = withContext(Dispatchers.IO) {
-        require(ifacePattern.matches(iface)) { "Nombre de interfaz no permitido" }
-        require(seconds in 5..30) { "Duración debe estar entre 5 y 30 segundos" }
+        val command=RemoteCommandPolicy.captureCommand(iface,seconds)
         open(context, cfg).use { ssh ->
-            val data = execute(ssh, "$AGENT capture --interface $iface --seconds $seconds", 45)
+            val data = execute(ssh, command, 45)
             val id = data.getString("id")
             val remote = data.getString("path")
-            require(idPattern.matches(id)) { "Identificador de captura remoto inválido" }
-            require(remote.contains("/.local/share/ghost-wifi-auditor/captures/") &&
-                remote.endsWith("/$id.pcap") &&
-                !remote.contains("..") && remote.length < 512) {
+            require(RemoteCommandPolicy.isAcceptedCapturePath(id,remote)) {
                 "Ruta de descarga no autorizada"
             }
             val file = File.createTempFile("ghost-remote-", ".pcap", context.cacheDir)
             try {
                 ssh.newSFTPClient().use { sftp ->
                     val attrs = sftp.stat(remote)
-                    if (attrs.size > 32L * 1024 * 1024) {
+                    if (!RemoteCommandPolicy.validateCaptureSize(attrs.size)) {
                         throw IOException("El archivo remoto supera 32 MiB")
                     }
                     sftp.get(remote, FileSystemFile(file))
                 }
-                if (file.length() > 32L * 1024 * 1024) {
+                if (!RemoteCommandPolicy.validateCaptureSize(file.length())) {
                     throw IOException("La descarga supera 32 MiB")
                 }
                 val imported = CaptureRepository.importCapture(context, Uri.fromFile(file), "linux_ssh")
-                runCatching { execute(ssh, "$AGENT cleanup --id $id", 10) }
                 imported
             } finally {
                 file.delete()
+                // Delete remote file whether import succeeded or failed.
+                runCatching { execute(ssh, RemoteCommandPolicy.cleanupCommand(id), 10) }
             }
         }
     }
