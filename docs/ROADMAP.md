@@ -3,8 +3,8 @@
 **Project:** [Gh0stDeveloper/Ghost-Wifi-Auditor](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor)  
 **Owner / Developer:** Ghost Developer  
 **Working branch:** `main`  
-**Baseline:** `0.3.0-alpha` M2 USB discovery development (2026-11-19; CI and physical OTG tests required)  
-**Status (2026-11-19):** M1 v0.2 source committed; GitHub Actions [run #44558588666](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44558588666) passed **unit tests**, **assembleDebug** and artifact upload for code commit `539ffe2`. No real-device QA or signed-release build has been performed yet.
+**Baseline:** `0.3.0-alpha` M2 USB diagnostics (2026-11-19; CI passed, physical OTG testing remains)  
+**Status (2026-11-19):** M1 v0.2 passed CI, and user confirmed root checks on a Redmi 14C. **M2 v0.3** CI [run #44563903907](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44563903907) passed unit tests, R8-minified Debug build, R8 mapping check and APK artifact upload (commit `5406aaa`). Persistent signing secrets were not configured; signed-release steps were skipped. Physical USB adapter QA is pending.
 
 > This document is a development plan, not a claim that planned functions already work. "Compiled" does not mean "tested on device." No unsupported driver or monitor capability is to be labeled as available.
 
@@ -134,3 +134,13 @@ Every release must include: **version/build, branch/commit, what changed (screen
 - Inspect app after phone reboot: root state must require a fresh check, as with M1.
 - R8-minified debug build passes `testDebugUnitTest` and `assembleDebug` and emits `mapping.txt`.
 - Verify APK signature: GitHub runner’s ordinary debug key is **not persistent** across workflow runs. For install-over updates, configure the Ghost-specific private keystore Secrets; do not commit keys.
+
+## M2 build and signing observations (2026-11-19)
+
+- [x] `testDebugUnitTest`: passed on GitHub Actions [#44563903907](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44563903907).
+- [x] `assembleDebug` with R8 minification and resource shrinking: passed.
+- [x] Debug `mapping.txt`: verified nonempty in CI.
+- [x] Debug APK: artifact uploaded (`ghost-wifi-debug`).
+- [ ] **Persistent release signing:** no `GHOST_WIFI_*` signing secrets configured; release job correctly skipped artifact generation.
+- [ ] **Upgrade signature compatibility:** M1 and M2 Debug certificates differ, so direct app update is not possible. New APK must not be advertised as update-compatible until signed with the original project keystore.
+- [ ] Physical OTG adapter connected/disconnected, user-granted permission, power/driver check and unknown VID:PID manual tests.

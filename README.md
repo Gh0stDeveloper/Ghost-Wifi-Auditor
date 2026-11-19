@@ -44,6 +44,19 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 
 **Pendiente de validación:** instalación de la APK en teléfonos reales y pruebas de las diferencias entre controladores/firmware. El soporte funcional de modo monitor, USB Wi-Fi y Linux remoto sigue pendiente.
 
+
+### Resultado de CI M2 (19 de noviembre de 2026)
+
+- [GitHub Actions #44563903907](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44563903907): pruebas unitarias, compilación **R8-minified Debug** y comprobación del archivo `mapping.txt`: **correctas**.
+- APK Debug de M2: artefacto `ghost-wifi-debug`, commit `5406aaa`.
+- **Firma:** no se configuraron aún los secretos privados de firma de Ghost WiFi Auditor. Por lo tanto, el trabajo de release firmada se omitió; el estado verde del job no significa que se produjera una release.
+- **Actualizaciones:** comprobación de certificados APK v2 mostró **certificados Debug distintos** para M1 y M2; Android rechazará instalar M2 sobre M1 como actualización. Desinstalar M1 permitiría probar el Debug M2, pero elimina los datos locales. Preferir en el futuro una compilación persistente firmada con la keystore original.
+- No se ha realizado todavía una prueba física con un adaptador USB: la enumeración, el permiso y la detección de chipsets **deben validarse con hardware real**.
+
+#### Configuración privada de firma (sin subir claves al repositorio)
+
+En **Settings → Secrets and variables → Actions** configura los cuatro secretos, con la keystore **original** de Ghost WiFi Auditor: `GHOST_WIFI_KEYSTORE_B64`, `GHOST_WIFI_STORE_PASSWORD`, `GHOST_WIFI_KEY_ALIAS` y `GHOST_WIFI_KEY_PASSWORD`. Una vez configurados, CI podrá compilar Debug y release con la **misma** identidad de firma. Los valores secretos y el archivo `.p12` no pertenecen al repositorio público.
+
 ## Vista general
 
 **Ghost WiFi Auditor** es una aplicación Android con diseño AMOLED grafito, acentos verdes y azules e identidad de dragón geométrico original. Está diseñada para funcionar como centro de diagnóstico y, progresivamente, como interfaz para herramientas de auditoría inalámbrica **en redes propias o con autorización expresa**.
