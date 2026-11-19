@@ -9,23 +9,42 @@ jobs:
   debug:
     runs-on: ubuntu-latest
     permissions: { contents: read }
+    env:
+      GHOST_WIFI_STORE_PASSWORD: ${{ secrets.GHOST_WIFI_STORE_PASSWORD }}
+      GHOST_WIFI_KEY_ALIAS: ${{ secrets.GHOST_WIFI_KEY_ALIAS }}
+      GHOST_WIFI_KEY_PASSWORD: ${{ secrets.GHOST_WIFI_KEY_PASSWORD }}
+      ENCODED_KEYSTORE: ${{ secrets.GHOST_WIFI_KEYSTORE_B64 }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: '8.9' }
+      - name: Prepare optional persistent QA keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "$ENCODED_KEYSTORE" && -n "$GHOST_WIFI_STORE_PASSWORD" && -n "$GHOST_WIFI_KEY_ALIAS" && -n "$GHOST_WIFI_KEY_PASSWORD" ]]; then
+            printf '%s' "$ENCODED_KEYSTORE" | base64 -d > "$RUNNER_TEMP/ghostwifi-qa.p12"
+            chmod 600 "$RUNNER_TEMP/ghostwifi-qa.p12"
+            echo "GHOST_WIFI_STORE_FILE=$RUNNER_TEMP/ghostwifi-qa.p12" >> "$GITHUB_ENV"
+            echo "QA uses the project persistent signing keystore." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "QA uses ephemeral Android debug signing. It cannot update prior APKs signed by a different key." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Unit tests for compatibility parsing
         run: gradle --no-daemon testDebugUnitTest
-      - name: Build debug APK
+      - name: Build R8-minified debug APK
         run: gradle --no-daemon assembleDebug
+      - name: Verify debug R8 mapping
+        run: test -s app/build/outputs/mapping/debug/mapping.txt
       - uses: actions/upload-artifact@v4
         with:
           name: ghost-wifi-debug
           path: app/build/outputs/apk/debug/*.apk
 
   signed-release:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions: { contents: read }
     env:
@@ -39,21 +58,42 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: '8.9' }
+      - name: Check signing secrets
+        id: signing
+        shell: bash
+        run: |
+          if [[ -n "$ENCODED_KEYSTORE" && -n "$GHOST_WIFI_STORE_PASSWORD" && -n "$GHOST_WIFI_KEY_ALIAS" && -n "$GHOST_WIFI_KEY_PASSWORD" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Persistent signing not configured: no release artifact produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Prepare private keystore
+        if: steps.signing.outputs.ready == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$ENCODED_KEYSTORE"
-          test -n "$GHOST_WIFI_STORE_PASSWORD"
-          test -n "$GHOST_WIFI_KEY_ALIAS"
-          test -n "$GHOST_WIFI_KEY_PASSWORD"
           printf '%s' "$ENCODED_KEYSTORE" | base64 -d > "$RUNNER_TEMP/ghostwifi-release.p12"
           chmod 600 "$RUNNER_TEMP/ghostwifi-release.p12"
           echo "GHOST_WIFI_STORE_FILE=$RUNNER_TEMP/ghostwifi-release.p12" >> "$GITHUB_ENV"
       - name: Build signed release APK (R8)
+        if: steps.signing.outputs.ready == 'true'
         run: gradle --no-daemon assembleRelease
+      - name: Validate R8 and release signature
+        if: steps.signing.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s app/build/outputs/mapping/release/mapping.txt
+          APK=$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
+          test -n "$APK"
+          SIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f -print -quit)
+          test -n "$SIGNER"
+          "$SIGNER" verify --print-certs "$APK"
+          sha256sum "$APK"
       - uses: actions/upload-artifact@v4
+        if: steps.signing.outputs.ready == 'true'
         with:
           name: ghost-wifi-signed-release
           path: app/build/outputs/apk/release/*.apk
-          retention-days: 7
+          retention-days: 14

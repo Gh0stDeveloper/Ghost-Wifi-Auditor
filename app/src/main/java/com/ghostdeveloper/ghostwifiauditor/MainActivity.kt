@@ -322,7 +322,6 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
     var search by rememberSaveable { mutableStateOf("") }
     var customName by remember { mutableStateOf(local.getString("custom_name", "") ?: "") }
     var customNotes by remember { mutableStateOf(local.getString("custom_notes", "") ?: "") }
-    var usbList by remember { mutableStateOf(HardwareInspector.usbDevices(ctx)) }
     var profile by remember { mutableStateOf<DeviceFingerprint?>(null) }
     var scanning by remember { mutableStateOf(false) }
     val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
@@ -391,16 +390,101 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
             },enabled=customName.isNotBlank()) { Text("Guardar perfil local · Sin verificar") }
             Small("Si el controlador no admite monitor, se sugerirá un adaptador compatible o un equipo Linux.")
         }
-        Panel {
-            H2("Dispositivos USB conectados")
-            if(usbList.isEmpty()) Small("No hay dispositivos USB enumerados.")
-            usbList.forEach { Small(it,color=Color.White) }
-            OutlinedButton(onClick={usbList=HardwareInspector.usbDevices(ctx)}) {
-                Icon(Icons.Filled.Refresh,null)
-                Spacer(Modifier.width(8.dp)); Text("Actualizar USB")
+        UsbAdapterPanel()
+    }
+}
+
+/**
+ * M2: USB Host observations only. The panel cannot install drivers or force monitor mode.
+ * Android's attach/detach broadcasts refresh the UI while the screen is visible.
+ */
+@Composable private fun UsbAdapterPanel() {
+    val ctx = LocalContext.current
+    val profiles = remember { UsbProfiles.load(ctx) }
+    var usbDevices by remember { mutableStateOf(UsbAdapterInspector.enumerate(ctx, profiles)) }
+    var usbMessage by remember { mutableStateOf("Conecta un adaptador por OTG o actualiza la lista.") }
+    val hostSupported = remember {
+        ctx.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_USB_HOST)
+    }
+    DisposableEffect(ctx) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
+                when (intent.action) {
+                    android.hardware.usb.UsbManager.ACTION_USB_DEVICE_ATTACHED,
+                    android.hardware.usb.UsbManager.ACTION_USB_DEVICE_DETACHED,
+                    ACTION_GHOST_USB_CHANGED -> {
+                        usbDevices = UsbAdapterInspector.enumerate(ctx, profiles)
+                        usbMessage = "Estado USB actualizado"
+                    }
+                }
             }
-            Small("VID/PID identifica hardware, pero no confirma que exista un driver funcional.")
         }
+        val filter = android.content.IntentFilter().apply {
+            addAction(android.hardware.usb.UsbManager.ACTION_USB_DEVICE_ATTACHED)
+            addAction(android.hardware.usb.UsbManager.ACTION_USB_DEVICE_DETACHED)
+            addAction(ACTION_GHOST_USB_CHANGED)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            ctx.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            ctx.registerReceiver(receiver, filter)
+        }
+        onDispose { runCatching { ctx.unregisterReceiver(receiver) } }
+    }
+    Panel {
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Icon(Icons.Filled.Usb, null, tint=Green)
+            Spacer(Modifier.width(8.dp))
+            H2("USB OTG · Compatibilidad M2")
+        }
+        Small(if(hostSupported) "Android declara USB Host disponible" else
+            "Este equipo no anuncia USB Host; comprueba soporte OTG")
+        Small("La detección y el permiso USB NO instalan un controlador Wi-Fi.")
+        if(usbDevices.isEmpty()) {
+            Small("No se detectaron dispositivos USB conectados.")
+        }
+        usbDevices.forEach { entry ->
+            Column(
+                Modifier.fillMaxWidth().border(1.dp,Color(0xFF353B3D),RoundedCornerShape(12.dp))
+                    .padding(11.dp), verticalArrangement=Arrangement.spacedBy(6.dp)
+            ) {
+                Text(entry.description, fontWeight=FontWeight.SemiBold,fontSize=14.sp)
+                Small("USB ${entry.usbId} · Clase: ${entry.deviceClass} · Interfaces: ${entry.interfaces}",Blue)
+                if(entry.profile == null) {
+                    Small("Chipset desconocido. Se puede registrar y comprobar manualmente.",Amber)
+                } else {
+                    Small("Chipset candidato: ${entry.profile.candidateChipset}",Green)
+                    Small("Driver Linux de referencia: ${entry.profile.linuxDriver} · ${entry.profile.bands}")
+                    Small(entry.driverEvidence)
+                    Small(entry.profile.caveat)
+                    TextButton(onClick={openExternalLink(ctx,entry.profile.sourceUrl)}) {
+                        Text("Documentación del driver",color=Blue)
+                    }
+                }
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    Small(if(entry.permissionGranted) "Permiso USB concedido" else "Permiso USB no concedido",
+                        if(entry.permissionGranted) Green else Muted)
+                    Spacer(Modifier.weight(1f))
+                    if(!entry.permissionGranted) {
+                        OutlinedButton(onClick={
+                            usbMessage = UsbAdapterInspector.requestAccess(ctx,entry.deviceName)
+                        }) { Text("Solicitar permiso",fontSize=12.sp) }
+                    }
+                }
+                Small("Captura y modo monitor: NO VERIFICADOS",Amber)
+            }
+        }
+        OutlinedButton(onClick={
+            usbDevices = UsbAdapterInspector.enumerate(ctx, profiles)
+            usbMessage = "Exploración manual terminada"
+        }) {
+            Icon(Icons.Filled.Refresh,null)
+            Spacer(Modifier.width(6.dp))
+            Text("Actualizar USB")
+        }
+        Small(usbMessage)
+        Small("Si el dongle consume más energía que la que entrega el teléfono, usa un hub OTG con alimentación externa. No cargues módulos de otros kernels.")
     }
 }
 

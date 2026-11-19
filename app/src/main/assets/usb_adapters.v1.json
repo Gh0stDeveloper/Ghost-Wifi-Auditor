@@ -1,0 +1,50 @@
+[
+  {
+    "id": "ar9271",
+    "vid": "0CF3",
+    "pid": "9271",
+    "chipset": "Atheros AR9271 (candidato)",
+    "driver": "ath9k_htc",
+    "firmware": "ath9k_htc/htc_9271-1.4.0.fw",
+    "bands": "2.4 GHz",
+    "examples": "ALFA AWUS036NHA / TP-Link TL-WN722N v1 (verificar revisión)",
+    "caveat": "Comprobar variante real y firmware. El USB ID no certifica compatibilidad con Android.",
+    "source": "https://wireless.docs.kernel.org/en/latest/en/users/drivers/ath9k_htc.html"
+  },
+  {
+    "id": "mt7612u",
+    "vid": "0E8D",
+    "pid": "7612",
+    "chipset": "MediaTek MT7612U / MT76x2U (candidato)",
+    "driver": "mt76x2u",
+    "firmware": "Firmware MediaTek para mt76x2u",
+    "bands": "2.4 / 5 GHz",
+    "examples": "ALFA AWUS036ACM (revisar referencia)",
+    "caveat": "El kernel Android necesita el controlador y firmware correspondientes; USB detectado no implica monitor.",
+    "source": "https://docs.alfa.com.tw/Support/Linux/MT7612U/"
+  },
+  {
+    "id": "rt3070",
+    "vid": "148F",
+    "pid": "3070",
+    "chipset": "Ralink RT3070 (candidato)",
+    "driver": "rt2800usb",
+    "firmware": "Revisar RT2870/RT3070",
+    "bands": "2.4 GHz",
+    "examples": "Adaptadores genéricos RT3070 (distintas revisiones)",
+    "caveat": "ID preliminar; confirmar driver físico y requerimientos de energía.",
+    "source": "https://www.kali.org/docs/nethunter/wireless-cards/"
+  },
+  {
+    "id": "rtl8812au",
+    "vid": "0BDA",
+    "pid": "8812",
+    "chipset": "Realtek RTL8812AU (candidato)",
+    "driver": "8812au",
+    "firmware": "Depende del driver",
+    "bands": "2.4 / 5 GHz",
+    "examples": "Algunos adaptadores Realtek 8812AU; no todos los AWUS036ACH usan este VID/PID",
+    "caveat": "Puede requerir controlador externo; identificar revisión exacta.",
+    "source": "https://www.kali.org/docs/nethunter/wireless-cards/"
+  }
+]

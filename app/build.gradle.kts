@@ -19,8 +19,8 @@ android {
         applicationId = "com.ghostdeveloper.ghostwifiauditor"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0-alpha"
+        versionCode = 3
+        versionName = "0.3.0-alpha"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
         externalNativeBuild { cmake { cppFlags += "-std=c++17" } }
     }
@@ -35,7 +35,14 @@ android {
         }
     }
     buildTypes {
-        getByName("debug") { isMinifyEnabled = false }
+        getByName("debug") {
+            // M2 QA APK is built with R8 even without release signing credentials.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Use project-specific persistent signing when configured; otherwise standard debug.
+            if (canSign) signingConfig = signingConfigs.getByName("persistent")
+        }
         getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true

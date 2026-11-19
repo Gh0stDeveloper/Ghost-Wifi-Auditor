@@ -9,7 +9,7 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 
 <p align="center">
   <a href="https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions"><img alt="Android CI" src="https://img.shields.io/github/actions/workflow/status/Gh0stDeveloper/Ghost-Wifi-Auditor/android.yml?label=Android%20CI&logo=githubactions"/></a>
-  <img alt="Development stage" src="https://img.shields.io/badge/estado-alpha%200.2.0-F0AD4E"/>
+  <img alt="Development stage" src="https://img.shields.io/badge/estado-alpha%200.3.0-F0AD4E"/>
   <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white"/>
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white"/>
   <a href="https://t.me/GhostDeve"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-Canal%20oficial-26A5E4?logo=telegram&logoColor=white"/></a>
@@ -17,6 +17,18 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 
 > [!IMPORTANT]
 > **Estado:** proyecto Android en fase **alpha / diagnóstico (M1)**. El código de la interfaz y las comprobaciones de hardware son una base de desarrollo. No se debe afirmar que la app ya permite capturar paquetes, activar modo monitor en cualquier teléfono, obtener contraseñas o instalar controladores automáticamente. Las funciones dependen del modelo, *kernel*, *firmware*, chipset y permisos.
+
+## Hito M2 — USB OTG y hardware externo (0.3.0-alpha)
+
+- Escaneo de dispositivos USB conectados y actualizaciones al conectar/desconectar, desde la pantalla **Equipos**.
+- Solicitud **explícita** de permisos USB mediante PendingIntent y un receiver privado no exportado.
+- Catálogo local de pares **VID:PID** (AR9271, MT7612U y referencias adicionales) en `app/src/main/assets/usb_adapters.v1.json`.
+- Separación visible entre dispositivo detectado, permiso de Android, módulo Linux potencialmente cargado y compatibilidad real de captura; nunca se confunden esos estados.
+- Guía de energía OTG, hub alimentado, firmware y controlador, incluyendo USB desconocidos.
+- Pruebas unitarias de emparejamiento exacto y estado conservador de módulos; el Debug ahora también usa **R8**.
+- La firma persistente puede utilizarse en CI si están configurados los secretos privados `GHOST_WIFI_*`. Sin esos secretos, el Debug del runner se firma temporalmente y **no garantiza actualizar una APK anterior**.
+
+**Pendiente:** pruebas con adaptadores físicos, creación de una interfaz monitor válida, capturas y motor SSH. USB Host no instala drivers por sí mismo.
 
 ## Hito M1 — Diagnóstico estructurado (0.2.0-alpha)
 
