@@ -3,7 +3,7 @@
 **Project:** [Gh0stDeveloper/Ghost-Wifi-Auditor](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor)  
 **Owner / Developer:** Ghost Developer  
 **Working branch:** `main`  
-**Baseline:** `0.4.0-alpha` M3 PCAP analysis + UI insets correction (CI success, Android/hardware QA pending)  
+**Baseline:** `0.5.0-alpha` M4 Linux SSH remote integration (CI and real host QA pending)  
 **Status (2026-11-19):** M1 v0.2 passed CI, and user confirmed root checks on a Redmi 14C. **M2 v0.3** CI [run #44563903907](https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions/runs/44563903907) passed unit tests, R8-minified Debug build, R8 mapping check and APK artifact upload (commit `5406aaa`). Persistent signing secrets were not configured; signed-release steps were skipped. Physical USB adapter QA is pending.
 
 > This document is a development plan, not a claim that planned functions already work. "Compiled" does not mean "tested on device." No unsupported driver or monitor capability is to be labeled as available.
@@ -68,11 +68,11 @@
 
 **Goal:** Make the Android app a working secure control panel for compatible Linux hardware.
 
-- [ ] SSH pairing using keys, known-host verification and confirmation of new host keys.
-- [ ] Minimal, audited Linux-side agent; no arbitrary shell command execution through UI.
-- [ ] Detect available wireless interfaces, controllers and installed analysis tools on the Linux host.
-- [ ] Show remote session state, reconnect, progress and error messages.
-- [ ] Only request user-approved capture operations within the defined scope; never embed keys or passwords in the APK.
+- [x] Host-key pinning through a user-supplied, independently verified known_hosts entry; password or private-key SSH login, no auto-trust (real-host QA pending).
+- [x] Minimal Python Linux agent with a strict list/capture/cleanup command allowlist and parameter limits; no arbitrary command UI.
+- [x] Read-only Linux iw interface diagnostic plus kernel, hostname and tcpdump presence through SSH (pending real-host QA).
+- [x] Show verified per-operation SSH connection results, status and error messages. Continuous SSH session / automatic reconnect not implemented.
+- [x] Require explicit authorization and confirmed monitor interface for bounded capture; SFTP download and M3 history import. Credentials are not embedded or persisted (pending real-host QA).
 
 **Acceptance:** connect to a controlled test host, enumerate its supported interfaces, run a permitted passive capture, download it and disconnect safely.
 
@@ -156,3 +156,13 @@ Every release must include: **version/build, branch/commit, what changed (screen
 - [ ] Physical Android 16 testing for bars and import/history/export; tests in CI are not a substitute for device testing.
 - [ ] Live capturing from internal or OTG interfaces: requires validated chipset driver, session service and hardware. No fake capture state.
 - [ ] M4 Linux SSH backend and remote captured-file workflow.
+
+## M4 source integration (2026-11-19)
+
+- [x] Android screen for Linux host, port, known_hosts public key, username, password or selected private key, SSH diagnostics and capture.
+- [x] Strict host-key pinning, fixed agent command paths, bounded session/transfer, no arbitrary shell entry.
+- [x] Python agent at `linux/ghost_wifi_agent.py` with list/capture/cleanup and unit tests (CI integration).
+- [x] Capture transferred over SFTP and imported into M3 private PCAP history.
+- [ ] CI build and R8 minification for v0.5.0-alpha, Android device smoke test, signed release.
+- [ ] Physical test against a real Linux SSH server with compatible monitor interface and sudo/capabilities configured safely.
+- [ ] Test network interruptions, SFTP failures, host key changes, large transfers and Android lifecycle.

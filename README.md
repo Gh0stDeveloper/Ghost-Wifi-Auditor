@@ -9,7 +9,7 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 
 <p align="center">
   <a href="https://github.com/Gh0stDeveloper/Ghost-Wifi-Auditor/actions"><img alt="Android CI" src="https://img.shields.io/github/actions/workflow/status/Gh0stDeveloper/Ghost-Wifi-Auditor/android.yml?label=Android%20CI&logo=githubactions"/></a>
-  <img alt="Development stage" src="https://img.shields.io/badge/estado-alpha%200.4.0-F0AD4E"/>
+  <img alt="Development stage" src="https://img.shields.io/badge/estado-alpha%200.5.0-F0AD4E"/>
   <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white"/>
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white"/>
   <a href="https://t.me/GhostDeve"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-Canal%20oficial-26A5E4?logo=telegram&logoColor=white"/></a>
@@ -17,6 +17,21 @@ Diagnóstico inalámbrico, compatibilidad de adaptadores y análisis de capturas
 
 > [!IMPORTANT]
 > **Estado:** proyecto Android en fase **alpha / diagnóstico (M1)**. El código de la interfaz y las comprobaciones de hardware son una base de desarrollo. No se debe afirmar que la app ya permite capturar paquetes, activar modo monitor en cualquier teléfono, obtener contraseñas o instalar controladores automáticamente. Las funciones dependen del modelo, *kernel*, *firmware*, chipset y permisos.
+
+## Hito M4 — Linux remoto con SSH y SFTP (0.5.0-alpha)
+
+La pantalla **Auditoría → Linux remoto** incluye integración real de red usando [SSHJ](https://github.com/hierynomus/sshj) 0.41.2:
+
+- SSH cifrado con **host key pinning obligatorio** mediante una entrada OpenSSH `known_hosts` que debe obtenerse por un canal confiable. No se permite aceptar claves automáticamente.
+- Autenticación por contraseña o archivo de clave privada, con frase de cifrado opcional. Las credenciales no se guardan en preferencias y los archivos temporales se eliminan después de cada operación.
+- Diagnóstico real con el agente Linux `ghost-wifi-agent`: versión kernel, hostname, interfaces `iw`, tipo de interfaz y disponibilidad de `tcpdump`.
+- Captura pasiva limitada a interfaces **ya configuradas en modo monitor** en el servidor; duración elegida de 5, 10, 15 o 30 segundos, máximo 500 paquetes y 32 MiB. El usuario debe confirmar explícitamente la autorización.
+- Descarga cifrada por **SFTP**, inspección y almacenamiento local en el historial PCAP del hito M3, y limpieza del fichero remoto después de una importación exitosa.
+- El motor Linux no interpreta comandos arbitrarios de la aplicación. El agente Linux (Python estándar) valida nombres de interfaces, IDs y parámetros y ejecuta `tcpdump` sin usar `shell=True`.
+- Las capturas Wi-Fi del propio Android o de un adaptador OTG siguen sin implementarse: no se confunde detección de hardware con una interfaz monitor operativa.
+
+**Instalación y configuración Linux:** [linux/README.md](linux/README.md).  
+**Pruebas de aceptación pendientes:** SSH real, fingerprints, login por clave, diagnóstico, captura de una interfaz monitor y transferencia SFTP. Solo se podrá verificar cuando exista un equipo Linux compatible; las pruebas automáticas no reemplazan hardware real.
 
 ## Hito M3 — Capturas offline y análisis nativo (0.4.0-alpha)
 
@@ -85,7 +100,7 @@ En **Settings → Secrets and variables → Actions** configura los cuatro secre
 
 - **Wi-Fi interno:** identifica las capacidades que anuncia el controlador; no fuerza funciones incompatibles.
 - **USB OTG:** enumera adaptadores, identifica **VID/PID** y permite planificar soporte de múltiples chipsets.
-- **Linux remoto:** modalidad proyectada para ejecutar herramientas desde un equipo Linux mediante conexión autenticada.
+- **Linux remoto:** cliente SSH/SFTP y agente controlado para diagnóstico y captura pasiva con interfaces monitor reales (pendiente de pruebas físicas).
 - **PCAP/PCAPNG:** analizador nativo de bloques y categorías de trama, con historial y exportación de informes; no captura en vivo.
 - **Root:** verificación bajo demanda de superusuario, compatible con enfoques de root temporal o persistente sin conceder permisos automáticamente.
 

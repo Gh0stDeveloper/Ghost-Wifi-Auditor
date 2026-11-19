@@ -32,6 +32,8 @@ jobs:
           else
             echo "QA uses ephemeral Android debug signing. It cannot update prior APKs signed by a different key." >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Linux agent unit tests
+        run: python3 -m unittest discover -s linux/tests -v
       - name: Native PCAP/PCAPNG parser tests
         run: |
           g++ -std=c++17 -O2 -Wall -Wextra -Werror app/src/main/cpp/pcap_core.cpp app/src/test/cpp/pcap_core_test.cpp -o "$RUNNER_TEMP/ghost-pcap-tests"

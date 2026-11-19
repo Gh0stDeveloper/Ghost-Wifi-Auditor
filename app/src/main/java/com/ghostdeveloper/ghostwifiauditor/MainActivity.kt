@@ -133,7 +133,8 @@ private fun MainShell() {
             item {
                 when(section) {
                     "Inicio" -> HomeScreen({ section="Auditoría" }, { section="Ajustes" })
-                    "Auditoría" -> AuditScreen()
+                    "Auditoría" -> AuditScreen(onRemote = { section="Linux remoto" })
+                    "Linux remoto" -> RemoteLinuxScreen(onBack={ section="Auditoría" })
                     "Equipos" -> DevicesScreen()
                     "Ajustes" -> SettingsScreen(openAbout = { section="About" })
                     else -> AboutScreen(onBack = { section="Ajustes" })
@@ -260,7 +261,7 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
     }
 }
 
-@Composable private fun AuditScreen() {
+@Composable private fun AuditScreen(onRemote:()->Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var mode by rememberSaveable { mutableStateOf("Interno") }
@@ -339,10 +340,17 @@ private fun Panel(modifier: Modifier=Modifier, content: @Composable ColumnScope.
             Small(when(mode) {
                 "Interno" -> "Wi-Fi integrado: exige una interfaz monitor operativa y validada. Root por sí solo no basta."
                 "USB OTG" -> "Un dispositivo USB detectado no implica que el kernel tenga un driver de captura compatible."
-                else -> "SSH y agente Linux no están implementados todavía (plan M4)."
+                else -> "SSH con verificación de host, agente Linux y descarga SFTP disponibles en M4; la captura requiere monitor real."
             })
-            StatusRow(Icons.Filled.RadioButtonUnchecked,"Captura en vivo","Sin backend validado",Amber)
-            Small("El inicio de captura permanecerá deshabilitado hasta implementar y probar un motor real para el hardware. No se simulan resultados.")
+            if(mode=="Linux remoto") {
+                OutlinedButton(onClick=onRemote,modifier=Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.Laptop,null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Abrir conexión Linux segura")
+                }
+            }
+            StatusRow(Icons.Filled.RadioButtonUnchecked,"Captura interna / USB","Sin backend local validado",Amber)
+            Small("La captura local sigue bloqueada; M4 usa exclusivamente el agente SSH Linux con una interfaz monitor verificada.")
         }
         Panel {
             H2("Importación y análisis C++")
@@ -681,7 +689,7 @@ private fun openExternalLink(ctx: android.content.Context, url: String) {
             Spacer(Modifier.width(12.dp))
             Column {
                 H1("Ghost WiFi Auditor")
-                Small("Versión 0.4.0-alpha · Hito M3")
+                Small("Versión 0.5.0-alpha · Hito M4")
                 Small("Dragón original · AMOLED grafito",Green)
             }
         }
