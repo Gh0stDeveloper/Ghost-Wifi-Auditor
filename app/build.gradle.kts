@@ -81,8 +81,6 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
-    // Required by AndroidX Test checks/tracer when the test APK is minified with R8.
-    androidTestImplementation("com.google.errorprone:error_prone_annotations:2.31.0")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.01.01"))
     debugImplementation("androidx.compose.ui:ui-tooling")

@@ -49,7 +49,7 @@ jobs:
       - name: Android lint (static analysis)
         run: gradle --no-daemon lintDebug
       - name: Compile Android UI instrumentation tests
-        run: gradle --no-daemon assembleDebugAndroidTest
+        run: gradle --no-daemon compileDebugAndroidTestKotlin
       - name: Unit tests for compatibility parsing
         run: gradle --no-daemon testDebugUnitTest
       - name: Build R8-minified debug APK
